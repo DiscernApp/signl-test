@@ -207,7 +207,7 @@ Return ONLY valid JSON:
   "closingNote": "1–2 sentences. What makes this gap hard to see alone — and what would shift if it closed? Honest, not salesy."
 }
 
-Only include signalGaps where the difference is meaningful (>1 point). If aspirations are absent, signalGaps can note where the current signal is weakest or most ambiguous — not where it falls short of an assumed target.`;
+Only include signalGaps where the difference is meaningful (>1 point). If aspirations are absent, signalGaps can note where the current signal is weakest or most ambiguous — not where it falls short of an assumed target. Always return all four axes in signalGaps (socialCategory, cognitiveState, status, aestheticCoherence) — even if the gap is small, set the target to the current value plus a small positive nudge so all four dashed markers render on the chart.`;
 };
 
 // ─── DEEP REPORT PROMPT ───────────────────────────────────────────────────────
@@ -381,12 +381,11 @@ function Nav({ screen, setScreen, snapCount, personaReady, reportReady }) {
   );
 }
 
-// ─── Aspiration Modal ─────────────────────────────────────────────────────────
-function AspirationModal({ onSave }) {
+// ─── Aspiration Modal 1 — Archetype + Context (after snap 1) ─────────────────
+function AspirationModal1({ onSave }) {
   const [archetype, setArchetype] = useState("");
   const [context,   setContext]   = useState("");
-  const [word,      setWord]      = useState("");
-  const ready = archetype && context && word.trim();
+  const ready = archetype && context;
 
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(20,20,18,0.65)", zIndex:300, display:"flex", alignItems:"center", justifyContent:"center", padding:20, animation:"fadeIn 0.3s ease" }}>
@@ -397,7 +396,7 @@ function AspirationModal({ onSave }) {
             What are you aiming to project?
           </h2>
           <p style={{ fontSize:13, color:"var(--muted)", lineHeight:1.75, fontWeight:300, marginBottom:28 }}>
-            Three quick questions. Your answers become the target your signal pattern is measured against.
+            Two quick questions. Your answers become the target your signal pattern is measured against.
           </p>
         </div>
 
@@ -428,14 +427,37 @@ function AspirationModal({ onSave }) {
             </div>
           </div>
 
-          <div>
-            <p style={{ fontFamily:"var(--serif)", fontSize:15, fontWeight:400, marginBottom:4 }}>In one word — what do you want people to feel after meeting you?</p>
-            <p style={{ fontSize:11, color:"var(--muted)", fontWeight:300, marginBottom:12 }}>Not a word for you — a feeling in them. Assured. Challenged. Trusted. Inspired.</p>
-            <input value={word} onChange={e => setWord(e.target.value)} placeholder="e.g. Trusted" maxLength={30}
-              style={{ width:"100%", background:"white", border:"1.5px solid var(--border)", borderLeft:"3px solid var(--teal)", color:"var(--ink)", fontFamily:"var(--serif)", fontSize:18, fontWeight:300, fontStyle:"italic", padding:"12px 16px", outline:"none" }} />
-          </div>
+          <button onClick={() => ready && onSave({ archetype, context })} disabled={!ready}
+            style={{ background:ready?"var(--ink)":"transparent", border:`1.5px solid ${ready?"var(--ink)":"var(--border)"}`, color:ready?"var(--bg)":"var(--muted)", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.16em", textTransform:"uppercase", padding:"14px", cursor:ready?"pointer":"default", transition:"all 0.18s" }}>
+            Next Snap →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-          <button onClick={() => ready && onSave({ archetype, context, word:word.trim() })} disabled={!ready}
+// ─── Aspiration Modal 2 — Word (after snap 2) ─────────────────────────────────
+function AspirationModal2({ existing, onSave }) {
+  const [word, setWord] = useState("");
+  const ready = word.trim().length > 0;
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(20,20,18,0.65)", zIndex:300, display:"flex", alignItems:"center", justifyContent:"center", padding:20, animation:"fadeIn 0.3s ease" }}>
+      <div style={{ background:"var(--bg)", border:"1.5px solid var(--bstrong)", maxWidth:540, width:"100%", animation:"slideUp 0.3s ease both" }}>
+        <div style={{ padding:"28px 28px 0" }}>
+          <Cap style={{ marginBottom:10 }}>One more thing</Cap>
+          <h2 style={{ fontFamily:"var(--serif)", fontSize:"clamp(24px,4vw,32px)", fontWeight:300, lineHeight:1.1, marginBottom:10 }}>
+            What do you want people to feel?
+          </h2>
+          <p style={{ fontSize:13, color:"var(--muted)", lineHeight:1.75, fontWeight:300, marginBottom:28 }}>
+            Not a word for you — a feeling in them. Assured. Challenged. Trusted. Inspired.
+          </p>
+        </div>
+        <div style={{ padding:"0 28px 28px", display:"flex", flexDirection:"column", gap:26 }}>
+          <input value={word} onChange={e => setWord(e.target.value)} placeholder="e.g. Trusted" maxLength={30}
+            style={{ width:"100%", background:"white", border:"1.5px solid var(--border)", borderLeft:"3px solid var(--teal)", color:"var(--ink)", fontFamily:"var(--serif)", fontSize:18, fontWeight:300, fontStyle:"italic", padding:"12px 16px", outline:"none" }} />
+          <button onClick={() => ready && onSave({ ...existing, word:word.trim() })} disabled={!ready}
             style={{ background:ready?"var(--ink)":"transparent", border:`1.5px solid ${ready?"var(--ink)":"var(--border)"}`, color:ready?"var(--bg)":"var(--muted)", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.16em", textTransform:"uppercase", padding:"14px", cursor:ready?"pointer":"default", transition:"all 0.18s" }}>
             Set My Target →
           </button>
@@ -501,8 +523,11 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
         });
       }
 
-      if (newSnaps.length === 2 && !aspirations) {
+      if (newSnaps.length === 1 && !aspirations) {
         setTimeout(() => setShowAspiration(true), 900);
+      }
+      if (newSnaps.length === 2 && aspirations && !aspirations.word) {
+        setTimeout(() => { setAspirationStage(2); setShowAspiration(true); }, 900);
       }
     } catch(e) { console.error(e); }
     setLoading(false);
@@ -796,15 +821,15 @@ function ShareCard({ persona, avgSignals }) {
     { left:"Incoherent",       right:"Considered",        value:avgSignals?.aestheticCoherence||5, color:"var(--teal)" },
   ];
   return (
-    <div style={{ background:"var(--ink)", padding:"32px 28px", maxWidth:360, border:"1.5px solid var(--ink)" }}>
+    <div style={{ background:"white", padding:"32px 28px", maxWidth:360, border:"1.5px solid var(--border)" }}>
       <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:26 }}>
         <div style={{ width:16, height:16, borderRadius:"50%", border:"1px solid var(--teal)", display:"flex", alignItems:"center", justifyContent:"center" }}>
           <div style={{ width:5, height:5, borderRadius:"50%", background:"var(--teal)" }} />
         </div>
-        <span style={{ fontFamily:"var(--serif)", fontSize:13, fontWeight:400, letterSpacing:"0.06em", color:"rgba(248,247,245,0.55)" }}>Signl</span>
+        <span style={{ fontFamily:"var(--serif)", fontSize:13, fontWeight:400, letterSpacing:"0.06em", color:"var(--muted)" }}>Signl</span>
       </div>
       <p style={{ fontSize:9, letterSpacing:"0.2em", textTransform:"uppercase", color:"var(--teal)", fontFamily:"var(--sans)", fontWeight:500, marginBottom:10 }}>My Signal Profile</p>
-      <h2 style={{ fontFamily:"var(--serif)", fontSize:"clamp(20px,4vw,28px)", fontWeight:300, lineHeight:1.1, color:"var(--bg)", marginBottom:22 }}>
+      <h2 style={{ fontFamily:"var(--serif)", fontSize:"clamp(20px,4vw,28px)", fontWeight:300, lineHeight:1.1, color:"var(--ink)", marginBottom:22 }}>
         {persona.headline}
       </h2>
       {avgSignals && (
@@ -814,11 +839,11 @@ function ShareCard({ persona, avgSignals }) {
             return (
               <div key={i} style={{ marginBottom:13 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:5 }}>
-                  <span style={{ fontSize:9, color:"rgba(248,247,245,0.35)", letterSpacing:"0.08em", textTransform:"uppercase" }}>{bar.left}</span>
-                  <span style={{ fontSize:9, color:"rgba(248,247,245,0.35)", letterSpacing:"0.08em", textTransform:"uppercase" }}>{bar.right}</span>
+                  <span style={{ fontSize:9, color:"var(--muted)", letterSpacing:"0.08em", textTransform:"uppercase" }}>{bar.left}</span>
+                  <span style={{ fontSize:9, color:"var(--muted)", letterSpacing:"0.08em", textTransform:"uppercase" }}>{bar.right}</span>
                 </div>
-                <div style={{ position:"relative", height:1, background:"rgba(248,247,245,0.12)", borderRadius:1 }}>
-                  <div style={{ position:"absolute", left:`${pct}%`, transform:"translateX(-50%)", top:-4, width:9, height:9, borderRadius:"50%", background:bar.color, border:"1.5px solid var(--ink)" }} />
+                <div style={{ position:"relative", height:1, background:"var(--border)", borderRadius:1 }}>
+                  <div style={{ position:"absolute", left:`${pct}%`, transform:"translateX(-50%)", top:-4, width:9, height:9, borderRadius:"50%", background:bar.color, border:"1.5px solid white" }} />
                 </div>
               </div>
             );
@@ -832,8 +857,8 @@ function ShareCard({ persona, avgSignals }) {
           ))}
         </div>
       )}
-      <div style={{ height:1, background:"rgba(248,247,245,0.1)", marginBottom:16 }} />
-      <p style={{ fontSize:9, color:"rgba(248,247,245,0.25)", letterSpacing:"0.14em", textTransform:"uppercase", fontFamily:"var(--sans)" }}>Signl — by Dfine</p>
+      <div style={{ height:1, background:"var(--border)", marginBottom:16 }} />
+      <p style={{ fontSize:9, color:"var(--muted)", letterSpacing:"0.14em", textTransform:"uppercase", fontFamily:"var(--sans)" }}>Signl — by Dfine</p>
     </div>
   );
 }
@@ -1096,8 +1121,14 @@ function DeepReportSection({ snaps, aspirations, deepReport, setDeepReport, prob
         How close is the professional you think you project<br />
         <span style={{ color:"var(--teal-lt)", fontStyle:"italic" }}>to the one the room actually sees?</span>
       </h3>
-      <p style={{ fontSize:13, color:"rgba(248,247,245,0.5)", lineHeight:1.85, fontWeight:300, marginBottom:28 }}>
+      <p style={{ fontSize:13, color:"rgba(248,247,245,0.5)", lineHeight:1.85, fontWeight:300, marginBottom:8 }}>
         Five questions. We compare what you say you project with what your signal data actually shows. Most people are surprised by the distance — not because they're wrong, but because they haven't looked closely enough.
+      </p>
+      <p style={{ fontSize:12, color:"rgba(248,247,245,0.35)", lineHeight:1.75, fontWeight:300, marginBottom:6, fontStyle:"italic" }}>
+        You'll answer five questions before your report is revealed — not after. The thinking you do is what makes the report specific to you. The paywall comes at the end because that's when it means the most.
+      </p>
+      <p style={{ fontSize:11, color:"rgba(248,247,245,0.28)", lineHeight:1.75, fontWeight:300, marginBottom:28 }}>
+        $10 one-off · Credited to your first month if you go on to try Dfine
       </p>
       {/* ── Payment integration point ──
           Replace the onClick below with your payment flow.
@@ -1106,7 +1137,7 @@ function DeepReportSection({ snaps, aspirations, deepReport, setDeepReport, prob
       <button
         onClick={() => { setUnlocked(true); setShowProbe(true); }}
         style={{ background:"var(--teal)", color:"white", border:"none", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.16em", textTransform:"uppercase", padding:"14px 34px", cursor:"pointer" }}>
-        Deep Report →
+        Deep Report — $10
       </button>
     </div>
   );
@@ -1289,6 +1320,8 @@ export default function App() {
   const [probeAnswers,   setProbeAnswers]   = useState(null);   // NEW
   const [hydrated,       setHydrated]       = useState(false);
   const [showAspiration, setShowAspiration] = useState(false);
+  const [aspirationStage, setAspirationStage] = useState(1); // 1 or 2
+  const [partialAspirations, setPartialAspirations] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -1321,8 +1354,17 @@ export default function App() {
   useEffect(() => { if (hydrated) sSet("signl:probeAnswers", probeAnswers); }, [probeAnswers,  hydrated]);   // NEW
 
   const handleSaveAspirations = data => {
-    setAspirations(data);
-    setShowAspiration(false);
+    if (!data.word) {
+      // Stage 1 complete — store partial, show stage 2
+      setPartialAspirations(data);
+      setAspirationStage(2);
+    } else {
+      // Stage 2 complete — save full aspirations
+      setAspirations(data);
+      setShowAspiration(false);
+      setAspirationStage(1);
+      setPartialAspirations(null);
+    }
   };
 
   if (!hydrated) return (
@@ -1360,7 +1402,8 @@ export default function App() {
           setProbeAnswers={setProbeAnswers}
         />
       )}
-      {showAspiration && <AspirationModal onSave={handleSaveAspirations} />}
+      {showAspiration && aspirationStage === 1 && <AspirationModal1 onSave={handleSaveAspirations} />}
+      {showAspiration && aspirationStage === 2 && <AspirationModal2 existing={partialAspirations} onSave={handleSaveAspirations} />}
     </>
   );
 }
