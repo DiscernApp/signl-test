@@ -11,6 +11,7 @@ const GlobalStyles = () => (
       --teal:    #1D9E75;
       --teal-lt: #5DCAA5;
       --teal-bg: rgba(29,158,117,0.07);
+      --mauve:   #7B5EA7;
       --muted:   #767470;
       --border:  rgba(20,20,18,0.12);
       --bstrong: rgba(20,20,18,0.28);
