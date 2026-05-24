@@ -332,7 +332,7 @@ function SignalRadar({ signals, targetSignals=null, compact=false }) {
       <SignalBar left="Ambiguous Tribe" right="Legible Archetype" value={socialCategory} color="var(--teal)" target={targetSignals?.socialCategory} />
       <SignalBar left="Context Misread" right="Context Aligned" value={cognitiveState} color="var(--green)" target={targetSignals?.cognitiveState} />
       <SignalBar left="Status Neutral" right="Status Projected" value={status} color="var(--amber)" target={targetSignals?.status} />
-      <SignalBar left="Incoherent" right="Considered" value={aestheticCoherence} color="var(--mauve)" target={targetSignals?.aestheticCoherence} />
+      <SignalBar left="Incoherent" right="Considered" value={aestheticCoherence} color="var(--teal)" target={targetSignals?.aestheticCoherence} />
       {targetSignals && <p style={{ fontSize:10, color:"var(--muted)", marginTop:6, fontStyle:"italic" }}>Solid = current · Dashed = aspired</p>}
     </div>
   );
@@ -501,7 +501,7 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
         });
       }
 
-      if (newSnaps.length === 1 && !aspirations) {
+      if (newSnaps.length === 2 && !aspirations) {
         setTimeout(() => setShowAspiration(true), 900);
       }
     } catch(e) { console.error(e); }
@@ -561,7 +561,7 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
                         <div style={{ position:"absolute", left:0, right:0, height:2, background:"linear-gradient(90deg, transparent, var(--teal), transparent)", opacity:0.6, animation:"scanline 1.8s linear infinite" }} />
                       </div>
                       <Spinner size={20} />
-                      <p style={{ fontSize:11, letterSpacing:"0.18em", textTransform:"uppercase", color:"var(--teal)", fontWeight:400 }}>Reading signals…</p>
+                      <div style={{ textAlign:"center" }}><p style={{ fontSize:11, letterSpacing:"0.18em", textTransform:"uppercase", color:"var(--teal)", fontWeight:500, marginBottom:6 }}>Analysing your signal</p><p style={{ fontSize:11, color:"var(--muted)", fontWeight:300, fontStyle:"italic" }}>Reading what the room would see…</p></div>
                     </div>
                   )}
                 </>
@@ -648,7 +648,7 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
               </button>
               {done ? (
                 <button onClick={() => setScreen(SCREENS.REPORT)} style={{ flex:1, background:"none", border:"1px solid var(--bstrong)", color:"var(--ink)", fontFamily:"var(--sans)", fontSize:11, letterSpacing:"0.14em", textTransform:"uppercase", padding:"13px", cursor:"pointer" }}>
-                  View Report →
+                  Discover Your Signal →
                 </button>
               ) : (
                 <button onClick={() => setScreen(SCREENS.SIGNALS)} style={{ flex:1, background:"none", border:"1px solid var(--bstrong)", color:"var(--ink)", fontFamily:"var(--sans)", fontSize:11, letterSpacing:"0.14em", textTransform:"uppercase", padding:"13px", cursor:"pointer" }}>
@@ -793,7 +793,7 @@ function ShareCard({ persona, avgSignals }) {
     { left:"Ambiguous Tribe",  right:"Legible Archetype", value:avgSignals?.socialCategory||5,     color:"var(--teal)" },
     { left:"Context Misread",  right:"Context Aligned",   value:avgSignals?.cognitiveState||5,     color:"var(--green)" },
     { left:"Status Neutral",   right:"Status Projected",  value:avgSignals?.status||5,             color:"var(--amber)" },
-    { left:"Incoherent",       right:"Considered",        value:avgSignals?.aestheticCoherence||5, color:"var(--mauve)" },
+    { left:"Incoherent",       right:"Considered",        value:avgSignals?.aestheticCoherence||5, color:"var(--teal)" },
   ];
   return (
     <div style={{ background:"var(--ink)", padding:"32px 28px", maxWidth:360, border:"1.5px solid var(--ink)" }}>
@@ -1099,14 +1099,8 @@ function DeepReportSection({ snaps, aspirations, deepReport, setDeepReport, prob
         How close is the professional you think you project<br />
         <span style={{ color:"var(--teal-lt)", fontStyle:"italic" }}>to the one the room actually sees?</span>
       </h3>
-      <p style={{ fontSize:13, color:"rgba(248,247,245,0.5)", lineHeight:1.85, fontWeight:300, marginBottom:8 }}>
+      <p style={{ fontSize:13, color:"rgba(248,247,245,0.5)", lineHeight:1.85, fontWeight:300, marginBottom:28 }}>
         Five questions. We compare what you say you project with what your signal data actually shows. Most people are surprised by the distance — not because they're wrong, but because they haven't looked closely enough.
-      </p>
-      <p style={{ fontSize:12, color:"rgba(248,247,245,0.35)", lineHeight:1.75, fontWeight:300, marginBottom:6, fontStyle:"italic" }}>
-        You'll answer five questions before your report is revealed — not after. The thinking you do is what makes the report specific to you. The paywall comes at the end because that's when it means the most.
-      </p>
-      <p style={{ fontSize:11, color:"rgba(248,247,245,0.28)", lineHeight:1.75, fontWeight:300, marginBottom:28 }}>
-        $10 one-off · Credited to your first month if you go on to try persona
       </p>
       {/* ── Payment integration point ──
           Replace the onClick below with your payment flow.
@@ -1115,7 +1109,7 @@ function DeepReportSection({ snaps, aspirations, deepReport, setDeepReport, prob
       <button
         onClick={() => { setUnlocked(true); setShowProbe(true); }}
         style={{ background:"var(--teal)", color:"white", border:"none", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.16em", textTransform:"uppercase", padding:"14px 34px", cursor:"pointer" }}>
-        Unlock Deep Report — $10
+        Deep Report →
       </button>
     </div>
   );
@@ -1157,7 +1151,7 @@ function DeepReportSection({ snaps, aspirations, deepReport, setDeepReport, prob
 }
 
 // ─── REPORT SCREEN ────────────────────────────────────────────────────────────
-function ReportScreen({ snaps, aspirations, persona, reportData, setReportData, deepReport, setDeepReport, probeAnswers, setProbeAnswers }) {
+function ReportScreen({ snaps, aspirations, persona, setPersona, reportData, setReportData, deepReport, setDeepReport, probeAnswers, setProbeAnswers }) {
   const [generating, setGenerating] = useState(false);
   const [showCard,   setShowCard]   = useState(false);
   const avg   = avgSignalsFrom(snaps);
@@ -1176,6 +1170,15 @@ function ReportScreen({ snaps, aspirations, persona, reportData, setReportData, 
     } catch(e) { console.error(e); }
     setGenerating(false);
   };
+
+  // Auto-generate persona if not yet available, so Signal Card renders
+  useEffect(() => {
+    if (ready && !persona) {
+      callClaude([{ role:"user", content:"Synthesise my Brand Persona." }], buildPersonaSynthesisSystem(snaps), null, 1000)
+        .then(reply => { const p = parseJSON(reply); if (p) setPersona(p); })
+        .catch(() => {});
+    }
+  }, [ready]);
 
   useEffect(() => { if (ready && !reportData && !generating) generate(); }, [ready]);
 
@@ -1209,22 +1212,20 @@ function ReportScreen({ snaps, aspirations, persona, reportData, setReportData, 
         ) : reportData ? (
           <div style={{ display:"flex", flexDirection:"column", gap:14, animation:"fadeUp 0.5s ease both" }}>
 
-            {/* Current vs Aspired */}
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:2 }}>
-              <div style={{ padding:"20px 22px", background:"white", border:"1px solid var(--border)", borderTop:"3px solid var(--muted)" }}>
-                <Cap style={{ marginBottom:8, color:"var(--muted)" }}>Currently projecting</Cap>
-                <h3 style={{ fontFamily:"var(--serif)", fontSize:18, fontWeight:300, lineHeight:1.2 }}>{reportData.currentPersonaLabel}</h3>
+            {/* Current vs Aspired — stark direct framing */}
+            <div style={{ padding:"28px 24px", background:"white", border:"1.5px solid var(--bstrong)", borderTop:"3px solid var(--teal)", animation:"fadeUp 0.4s ease both" }}>
+              <Cap style={{ marginBottom:16, color:"var(--muted)" }}>Your Signal Gap</Cap>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:2, marginBottom:20 }}>
+                <div style={{ padding:"18px 20px", background:"var(--surface)", border:"1px solid var(--border)" }}>
+                  <p style={{ fontSize:9, letterSpacing:"0.16em", textTransform:"uppercase", color:"var(--muted)", fontWeight:500, marginBottom:10 }}>The room reads you as</p>
+                  <h3 style={{ fontFamily:"var(--serif)", fontSize:17, fontWeight:300, lineHeight:1.25 }}>{reportData.currentPersonaLabel}</h3>
+                </div>
+                <div style={{ padding:"18px 20px", background:"var(--teal-bg)", border:"1px solid rgba(29,158,117,0.2)" }}>
+                  <p style={{ fontSize:9, letterSpacing:"0.16em", textTransform:"uppercase", color:"var(--teal)", fontWeight:500, marginBottom:10 }}>You want to project</p>
+                  <h3 style={{ fontFamily:"var(--serif)", fontSize:17, fontWeight:300, lineHeight:1.25 }}>{reportData.aspirationalPersonaLabel}</h3>
+                </div>
               </div>
-              <div style={{ padding:"20px 22px", background:"var(--teal-bg)", border:"1px solid var(--border)", borderTop:"3px solid var(--teal)" }}>
-                <Cap style={{ marginBottom:8 }}>Aiming to project</Cap>
-                <h3 style={{ fontFamily:"var(--serif)", fontSize:18, fontWeight:300, lineHeight:1.2 }}>{reportData.aspirationalPersonaLabel}</h3>
-              </div>
-            </div>
-
-            {/* Gap summary */}
-            <div style={{ padding:"22px 24px", background:"white", border:"1.5px solid var(--bstrong)", borderTop:"3px solid var(--teal)" }}>
-              <Cap style={{ marginBottom:12 }}>The Gap</Cap>
-              <p style={{ fontFamily:"var(--serif)", fontSize:16, lineHeight:1.9, fontWeight:300, fontStyle:"italic" }}>{reportData.gapSummary}</p>
+              <p style={{ fontFamily:"var(--serif)", fontSize:15, lineHeight:1.9, fontWeight:300, fontStyle:"italic", color:"var(--muted)" }}>{reportData.gapSummary}</p>
             </div>
 
             {/* Signal radar with target overlay */}
@@ -1233,42 +1234,6 @@ function ReportScreen({ snaps, aspirations, persona, reportData, setReportData, 
                 <Cap style={{ marginBottom:10, color:"var(--muted)" }}>Where the gap lives</Cap>
                 <SignalRadar signals={avg}
                   targetSignals={reportData.signalGaps.reduce((acc,g) => ({ ...acc, [g.axis]:g.target }), {})} />
-                <div style={{ display:"flex", flexDirection:"column", gap:2, marginTop:2 }}>
-                  {reportData.signalGaps.map((gap,i) => (
-                    <div key={i} style={{ padding:"12px 16px", background:"white", border:"1px solid var(--border)", borderLeft:`3px solid ${axisColor(gap.axis)}`, display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:16 }}>
-                      <div style={{ flex:1 }}>
-                        <p style={{ fontSize:10, color:axisColor(gap.axis), letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:4, fontWeight:500 }}>{axisLabel(gap.axis)}</p>
-                        <p style={{ fontSize:13, color:"var(--muted)", fontWeight:300, lineHeight:1.65 }}>{gap.note}</p>
-                      </div>
-                      <div style={{ textAlign:"right", flexShrink:0 }}>
-                        <p style={{ fontSize:12, color:"var(--muted)", fontWeight:300 }}>{gap.current} → <span style={{ color:axisColor(gap.axis), fontWeight:500 }}>{gap.target}</span></p>
-                        <p style={{ fontSize:10, color:gap.direction==="up"?"var(--green)":"var(--amber)", marginTop:2 }}>{gap.direction==="up"?"↑":"↓"}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Adjustments */}
-            {reportData.adjustments?.length>0 && (
-              <div>
-                <Cap style={{ marginBottom:10, color:"var(--muted)" }}>Three things worth shifting</Cap>
-                <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
-                  {reportData.adjustments.map((adj,i) => (
-                    <div key={i} style={{ padding:"18px 20px", background:"white", border:"1px solid var(--border)", borderLeft:`3px solid ${axisColor(adj.axis)}`, animation:`fadeUp 0.4s ease ${i*0.08}s both` }}>
-                      <p style={{ fontSize:14, fontWeight:400, marginBottom:6, fontFamily:"var(--serif)" }}>{adj.title}</p>
-                      <p style={{ fontSize:13, color:"var(--muted)", lineHeight:1.75, fontWeight:300 }}>{adj.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Closing note */}
-            {reportData.closingNote && (
-              <div style={{ padding:"20px 24px", background:"var(--surface)", border:"1px solid var(--border)", borderLeft:"3px solid var(--bstrong)" }}>
-                <p style={{ fontSize:14, fontFamily:"var(--serif)", lineHeight:1.9, fontWeight:300, fontStyle:"italic" }}>{reportData.closingNote}</p>
               </div>
             )}
 
@@ -1389,6 +1354,7 @@ export default function App() {
           snaps={snaps}
           aspirations={aspirations}
           persona={persona}
+          setPersona={setPersona}
           reportData={reportData}
           setReportData={setReportData}
           deepReport={deepReport}
