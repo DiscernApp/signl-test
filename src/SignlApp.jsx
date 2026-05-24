@@ -227,10 +227,10 @@ const buildDeepReportSystem = (snaps, aspirations, probeAnswers) => {
 
   return `You are producing a deeper read of the gap between how someone describes themselves professionally and what their outfit photos actually show a room. Your job is to be honest, specific, and useful — not to define them, not to prescribe solutions, and not to assume anything they haven't told you.
 
-TONE: Warm but direct. Like a thoughtful, honest colleague who has looked at the same evidence you have and is telling you what they actually see. Conversational — write the way a perceptive person speaks. No academic language, no jargon, no framework names (do not mention Hester, Hehman, or any research framework). No motivational language. No reassurance for its own sake.
+TONE: Warm but direct. Like a thoughtful, honest colleague speaking directly to the person — addressing them as "you" throughout. Conversational — write the way a perceptive person speaks. No academic language, no jargon, no framework names (do not mention Hester, Hehman, or any research framework). No motivational language. No reassurance for its own sake.
 
 ATTRIBUTION RULES — these are non-negotiable:
-— When referencing what the person said in their answers, always attribute it. Write "In their answers, they described themselves as [word]" or "They said they want to be remembered for [thing]" — never "You said" in a way that implies the app already knew this.
+— Always speak directly to the person using "you" and "your". Write "You described yourself as [word]" or "You said you want to be remembered for [thing]".
 — Never assume a professional destination or archetype the person hasn't stated. If their aspirations are sparse, work with what's there without inventing direction.
 — Never state a goal or aspiration as if it were obvious or self-evident — only as something they reported.
 — Quote their actual words from Q1–Q3 at least twice across the report. Put quotes around their exact words.
@@ -721,7 +721,7 @@ function SignalsScreen({ snaps, persona, setPersona }) {
 
             {persona ? (
               <div style={{ padding:"24px", background:"white", border:"1.5px solid var(--bstrong)", borderTop:"3px solid var(--teal)", animation:"pop 0.5s ease both" }}>
-                <Cap style={{ marginBottom:12 }}>Emerging Persona</Cap>
+                <Cap style={{ marginBottom:12 }}>Your Signal Profile</Cap>
                 <h3 style={{ fontFamily:"var(--serif)", fontSize:22, fontWeight:300, marginBottom:14 }}>{persona.headline}</h3>
                 <p style={{ fontSize:13, lineHeight:1.85, fontWeight:300, color:"var(--muted)", fontStyle:"italic", marginBottom:16 }}>{persona.summary}</p>
                 {persona.dominantSignals?.length>0 && (
@@ -749,12 +749,12 @@ function SignalsScreen({ snaps, persona, setPersona }) {
             ) : ready ? (
               <button onClick={synthesise} disabled={synthesising}
                 style={{ background:synthesising?"transparent":"var(--ink)", border:`1.5px solid ${synthesising?"var(--border)":"var(--ink)"}`, color:synthesising?"var(--muted)":"var(--bg)", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.16em", textTransform:"uppercase", padding:"16px", cursor:synthesising?"default":"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:12 }}>
-                {synthesising ? <><Spinner size={14} /><span>Synthesising…</span></> : "✦ Synthesise My Persona"}
+                {synthesising ? <><Spinner size={14} /><span>Synthesising…</span></> : "✦ Build My Signal Profile"}
               </button>
             ) : (
               <div style={{ padding:"16px 20px", background:"var(--surface)", border:"1px solid var(--border)" }}>
                 <p style={{ fontSize:13, color:"var(--muted)", fontWeight:300 }}>
-                  Persona synthesis available after {MIN_FOR_PERSONA - snaps.length} more snap{MIN_FOR_PERSONA-snaps.length!==1?"s":""}.
+                  Signal profile available after {MIN_FOR_PERSONA - snaps.length} more snap{MIN_FOR_PERSONA-snaps.length!==1?"s":""}.
                 </p>
               </div>
             )}
@@ -1033,17 +1033,14 @@ function DeepReportDisplay({ report, probeAnswers, aspirations, onRegenerate }) 
         <Cap style={{ marginBottom:14, color:"var(--teal-lt)" }}>The next step</Cap>
         <h3 style={{ fontFamily:"var(--serif)", fontSize:"clamp(20px,3.2vw,28px)", fontWeight:300, color:"var(--bg)", marginBottom:16, lineHeight:1.18 }}>
           Most people have a vague sense of the professional they want to be.<br />
-          <span style={{ color:"var(--teal-lt)", fontStyle:"italic" }}>persona defines it, articulates it, and dresses you to show up that way.</span>
+          <span style={{ color:"var(--teal-lt)", fontStyle:"italic" }}>Dfine defines it, articulates it, and dresses you to show up that way.</span>
         </h3>
         <p style={{ fontSize:13, color:"rgba(248,247,245,0.5)", lineHeight:1.9, fontWeight:300, marginBottom:6 }}>
-          Signl showed you what the room sees. The Mirror decides what you want them to see. They're different sessions — and you need both.
+          Signl showed you what the room sees. Dfine decides what you want them to see. They're different sessions — and you need both.
         </p>
-        <p style={{ fontSize:13, color:"rgba(248,247,245,0.5)", lineHeight:1.9, fontWeight:300, marginBottom:10 }}>
-          The Mirror is a guided session that surfaces your archetype, positioning, tone of voice, and style direction — turning a vague professional instinct into something precise and ownable.
-          {aspirations?.archetype ? ` You said you're aiming toward ${aspirations.archetype}. The Mirror defines what that actually means for you specifically.` : ""}
-        </p>
-        <p style={{ fontSize:12, color:"rgba(248,247,245,0.3)", lineHeight:1.75, fontWeight:300, marginBottom:26 }}>
-          Your $10 is credited toward your first month. So trying persona costs you nothing more.
+        <p style={{ fontSize:13, color:"rgba(248,247,245,0.5)", lineHeight:1.9, fontWeight:300, marginBottom:26 }}>
+          Dfine is a guided session that surfaces your archetype, positioning, tone of voice, and style direction — turning a vague professional instinct into something precise and ownable.
+          {aspirations?.archetype ? ` You said you're aiming toward ${aspirations.archetype}. Dfine defines what that actually means for you specifically.` : ""}
         </p>
         <a href="https://persona.app" target="_blank" rel="noopener noreferrer"
           style={{ display:"inline-block", background:"var(--teal)", color:"white", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.16em", textTransform:"uppercase", padding:"14px 34px", cursor:"pointer", textDecoration:"none" }}>
