@@ -1257,13 +1257,21 @@ function ReportScreen({ snaps, aspirations, persona, setPersona, reportData, set
             </div>
 
             {/* Signal radar with target overlay */}
-            {avg && reportData.signalGaps?.length>0 && (
-              <div>
-                <Cap style={{ marginBottom:10, color:"var(--muted)" }}>Where the gap lives</Cap>
-                <SignalRadar signals={avg}
-                  targetSignals={reportData.signalGaps.reduce((acc,g) => ({ ...acc, [g.axis]:g.target }), {})} />
-              </div>
-            )}
+            {avg && reportData.signalGaps?.length>0 && (() => {
+              const gapMap = reportData.signalGaps.reduce((acc,g) => ({ ...acc, [g.axis]:g.target }), {});
+              const fullTargets = {
+                socialCategory:    gapMap.socialCategory    ?? avg.socialCategory,
+                cognitiveState:    gapMap.cognitiveState    ?? avg.cognitiveState,
+                status:            gapMap.status            ?? avg.status,
+                aestheticCoherence:gapMap.aestheticCoherence?? avg.aestheticCoherence,
+              };
+              return (
+                <div>
+                  <Cap style={{ marginBottom:10, color:"var(--muted)" }}>Where the gap lives</Cap>
+                  <SignalRadar signals={avg} targetSignals={fullTargets} />
+                </div>
+              );
+            })()}
 
             {/* ── DEEP REPORT ── */}
             <DeepReportSection
