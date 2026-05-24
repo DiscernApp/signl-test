@@ -669,15 +669,11 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
 
             <div style={{ display:"flex", gap:10 }}>
               <button onClick={reset} style={{ flex:1, background:"var(--ink)", color:"var(--bg)", border:"none", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.14em", textTransform:"uppercase", padding:"13px", cursor:"pointer" }}>
-                {done ? "All Done" : "Next Snap"}
+                {done ? "All Done" : "Next Snap →"}
               </button>
-              {done ? (
+              {done && (
                 <button onClick={() => setScreen(SCREENS.REPORT)} style={{ flex:1, background:"none", border:"1px solid var(--bstrong)", color:"var(--ink)", fontFamily:"var(--sans)", fontSize:11, letterSpacing:"0.14em", textTransform:"uppercase", padding:"13px", cursor:"pointer" }}>
                   Discover Your Signal →
-                </button>
-              ) : (
-                <button onClick={() => setScreen(SCREENS.SIGNALS)} style={{ flex:1, background:"none", border:"1px solid var(--bstrong)", color:"var(--ink)", fontFamily:"var(--sans)", fontSize:11, letterSpacing:"0.14em", textTransform:"uppercase", padding:"13px", cursor:"pointer" }}>
-                  View Signals →
                 </button>
               )}
             </div>
@@ -1121,8 +1117,11 @@ function DeepReportSection({ snaps, aspirations, deepReport, setDeepReport, prob
         How close is the professional you think you project<br />
         <span style={{ color:"var(--teal-lt)", fontStyle:"italic" }}>to the one the room actually sees?</span>
       </h3>
+      <p style={{ fontSize:13, color:"rgba(248,247,245,0.6)", lineHeight:1.85, fontWeight:300, marginBottom:8 }}>
+        Most people assume the gap is small. It rarely is.
+      </p>
       <p style={{ fontSize:13, color:"rgba(248,247,245,0.5)", lineHeight:1.85, fontWeight:300, marginBottom:8 }}>
-        Five questions. We compare what you say you project with what your signal data actually shows. Most people are surprised by the distance — not because they're wrong, but because they haven't looked closely enough.
+        Five questions. We compare what you say you project with what your signal data actually shows. The distance between those two things is where your brand either lands or leaks.
       </p>
       <p style={{ fontSize:12, color:"rgba(248,247,245,0.35)", lineHeight:1.75, fontWeight:300, marginBottom:6, fontStyle:"italic" }}>
         You'll answer five questions before your report is revealed — not after. The thinking you do is what makes the report specific to you. The paywall comes at the end because that's when it means the most.
@@ -1259,11 +1258,16 @@ function ReportScreen({ snaps, aspirations, persona, setPersona, reportData, set
             {/* Signal radar with target overlay */}
             {avg && reportData.signalGaps?.length>0 && (() => {
               const gapMap = reportData.signalGaps.reduce((acc,g) => ({ ...acc, [g.axis]:g.target }), {});
+              // Always nudge aspired value at least 1 point above current so dashed marker is always visible
+              const nudge = (current, target) => {
+                const t = target ?? current;
+                return Math.abs(t - current) < 1 ? Math.min(10, current + 1.5) : t;
+              };
               const fullTargets = {
-                socialCategory:    gapMap.socialCategory    ?? avg.socialCategory,
-                cognitiveState:    gapMap.cognitiveState    ?? avg.cognitiveState,
-                status:            gapMap.status            ?? avg.status,
-                aestheticCoherence:gapMap.aestheticCoherence?? avg.aestheticCoherence,
+                socialCategory:    nudge(avg.socialCategory,     gapMap.socialCategory),
+                cognitiveState:    nudge(avg.cognitiveState,     gapMap.cognitiveState),
+                status:            nudge(avg.status,             gapMap.status),
+                aestheticCoherence:nudge(avg.aestheticCoherence, gapMap.aestheticCoherence),
               };
               return (
                 <div>
