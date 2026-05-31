@@ -43,7 +43,6 @@ async function callClaude(messages, system, img = null, maxTokens = 1000) {
       { type:"text",  text:content }
     ];
   }
-  
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method:"POST",
     headers:{
@@ -51,39 +50,11 @@ async function callClaude(messages, system, img = null, maxTokens = 1000) {
       "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY,
       "anthropic-version": "2023-06-01"
     },
-    body: JSON.stringify({ 
-      model:"claude-sonnet-4-20250514", 
-      max_tokens:maxTokens, 
-      system,
-      messages:[...messages.slice(0,-1), { role:last.role, content }] 
-    })
+    body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:maxTokens, system, messages:[...messages.slice(0,-1), { role:last.role, content }] })
   });
-  
   const d = await res.json();
-  if (!d.content?.[0]?.text) {
-    throw new Error(d.error?.message || "No response from Claude");
-  }
+  if (!d.content?.[0]?.text) throw new Error(d.error?.message || "No response");
   return d.content[0].text;
-}
-  const last = messages[messages.length - 1];
-  let content = last.content;
-  if (img && typeof content === "string") {
-    content = [
-      { type:"image", source:{ type:"base64", media_type:"image/jpeg", data:img } },
-      { type:"text",  text:content }
-    ];
-  }
-  const res = await fetch("/api/claude", {
-    method:"POST",
-    headers:{
-      "Content-Type":"application/json",
-      "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY,
-    },
-    body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:maxTokens, system,
-      messages:[...messages.slice(0,-1), { role:last.role, content }] })
-  });
-  const d = await res.json();
-  return d.content?.[0]?.text ?? "";
 }
 
 function parseJSON(t) {
