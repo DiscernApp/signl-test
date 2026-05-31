@@ -11,7 +11,6 @@ const GlobalStyles = () => (
       --teal:    #1D9E75;
       --teal-lt: #5DCAA5;
       --teal-bg: rgba(29,158,117,0.07);
-      --mauve:   #7B5EA7;
       --muted:   #767470;
       --border:  rgba(20,20,18,0.12);
       --bstrong: rgba(20,20,18,0.28);
@@ -45,7 +44,7 @@ async function callClaude(messages, system, img = null, maxTokens = 1000) {
     ];
   }
   const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method:"POST", headers:{"Content-Type":"application/json","x-api-key":import.meta.env.VITE_ANTHROPIC_API_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+    method:"POST", headers:{"Content-Type":"application/json"},
     body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:maxTokens, system,
       messages:[...messages.slice(0,-1), { role:last.role, content }] })
   });
@@ -207,13 +206,73 @@ Return ONLY valid JSON:
   "closingNote": "1–2 sentences. What makes this gap hard to see alone — and what would shift if it closed? Honest, not salesy."
 }
 
-Only include signalGaps where the difference is meaningful (>1 point). If aspirations are absent, signalGaps can note where the current signal is weakest or most ambiguous — not where it falls short of an assumed target. Always return all four axes in signalGaps (socialCategory, cognitiveState, status, aestheticCoherence) — even if the gap is small, set the target to the current value plus a small positive nudge so all four dashed markers render on the chart.`;
+Only include signalGaps where the difference is meaningful (>1 point). If aspirations are absent, signalGaps can note where the current signal is weakest or most ambiguous — not where it falls short of an assumed target.`;
+};
+
+// ─── CONSEQUENCE LAYER PROMPT ─────────────────────────────────────────────────
+// For each signal gap, generate a consequence statement that names a specific 
+// professional outcome, uses observational language, and draws distinctions 
+// between similar-sounding roles.
+const buildConsequenceLayerSystem = (gaps, aspirations) => {
+  const gapDescriptions = gaps?.map((g, i) => 
+    `Gap ${i+1}: ${g.axis} (current: ${g.current}, target: ${g.target}). Note: ${g.note}`
+  ).join("\n") || "No gaps identified.";
+
+  return `You are generating consequence statements for a professional's signal gaps. For each gap, you will name a specific professional outcome that may be affected, and draw a distinction between two roles that sound similar but aren't.
+
+Your job is NOT to alarm or motivate — it's to name what's at stake, honestly and precisely, from the perspective of someone observing a room.
+
+TONE: Like an experienced executive coach observing something useful and uncomfortable, from a position of genuine respect. Observational, not critical. Intelligent, precise, professionally consequential.
+
+FOR EACH SIGNAL GAP:
+1. Name a specific professional outcome that may be affected
+   Examples: leadership assumption, strategic authority, promotion potential, room access, 
+   who gets listened to first, whether you're read as executing vs. defining, 
+   reviewing vs. deciding, contributing vs. leading
+
+2. Use observational language, never critical
+   Use: "may", "the room may", "people may assume"
+   Never use: "you are", "you will", direct address
+
+3. Draw a distinction between two roles that sound similar but aren't
+   Examples: "Executing well vs. being asked to define strategy"
+             "Solving problems vs. choosing which problems matter"
+             "Being heard in meetings vs. being listened to first"
+
+4. Never reference clothing, appearance, or style
+   Always reference perception, signal, and professional consequence
+
+5. End with one open question or observation that the full report answers
+   Something that cannot be fully explained in a card — something that creates curiosity
+
+CRITICAL RULES:
+— Avoid: fear, urgency, negativity, fashion language, personal critique
+— Aim for: professional consequence, useful specificity, respect
+
+SIGNAL GAPS TO ADDRESS:
+${gapDescriptions}
+
+${aspirations ? `THEIR STATED ASPIRATIONS: ${aspirations.archetype || "Not specified"} in ${aspirations.context || "not specified"} context. Word: "${aspirations.word || 'not specified'}"` : "No aspirations stated — address the current gaps in observable outcomes."}
+
+Return ONLY valid JSON:
+{
+  "consequences": [
+    {
+      "gap": "axis name (e.g., 'socialCategory')",
+      "outcome": "A specific professional outcome: one phrase naming what's at stake (e.g., 'Room access and strategic input')",
+      "distinction": "Two roles that sound similar but aren't, drawn from this gap (e.g., 'Being heard as someone solving problems vs. being consulted on which problems matter')",
+      "observation": "One observational sentence using 'may': what might a room assume or do based on the current signal? (e.g., 'The room may see you as highly capable at execution, but less certain about your strategic thinking.')",
+      "openingQuestion": "One question that the full report will answer but the card cannot fully address (e.g., 'What would it take for this room to ask your opinion on what matters, not just how to solve it?')"
+    }
+  ]
+}`;
 };
 
 // ─── DEEP REPORT PROMPT ───────────────────────────────────────────────────────
-// Purpose-built to surface blind spots and lack of definition.
-// This is a thought-provoking signal read, not a psychometric instrument.
-// The gap must remain open at the end — it is what creates desire to resolve it.
+// Revised framework: Professional perception analyst with behavioural psychology 
+// precision and executive coach communication style.
+// Structure: Headline → Room Reading → Signal Gap → Professional Meaning → Cost → 
+// Predictive Insight → Next Signal → Close
 const buildDeepReportSystem = (snaps, aspirations, probeAnswers) => {
   const snapSummary = snaps.map((s, i) => {
     const items = s.itemsDetected?.length ? `Items seen: ${s.itemsDetected.join(", ")}.` : "";
@@ -225,61 +284,84 @@ const buildDeepReportSystem = (snaps, aspirations, probeAnswers) => {
   const tagFreq = allTags.reduce((acc, t) => { acc[t] = (acc[t]||0)+1; return acc; }, {});
   const dominantTags = Object.entries(tagFreq).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([t])=>t);
 
-  return `You are producing a deeper read of the gap between how someone describes themselves professionally and what their outfit photos actually show a room. Your job is to be honest, specific, and useful — not to define them, not to prescribe solutions, and not to assume anything they haven't told you.
+  return `You are a professional perception analyst with the observational precision of a behavioural psychologist and the communication style of a senior executive coach.
 
-TONE: Warm but direct. Like a thoughtful, honest colleague speaking directly to the person — addressing them as "you" throughout. Conversational — write the way a perceptive person speaks. No academic language, no jargon, no framework names (do not mention Hester, Hehman, or any research framework). No motivational language. No reassurance for its own sake.
+You are NOT a stylist. You are NOT a fashion advisor. You do NOT comment on clothing choices, style preferences, or appearance in evaluative terms.
 
-ATTRIBUTION RULES — these are non-negotiable:
-— Always speak directly to the person using "you" and "your". Write "You described yourself as [word]" or "You said you want to be remembered for [thing]".
-— Never assume a professional destination or archetype the person hasn't stated. If their aspirations are sparse, work with what's there without inventing direction.
-— Never state a goal or aspiration as if it were obvious or self-evident — only as something they reported.
-— Quote their actual words from Q1–Q3 at least twice across the report. Put quotes around their exact words.
+You analyse what professional appearance SIGNALS — and what those signals may be causing others to assume before the person speaks.
+
+YOUR ROLE:
+Analyse the gap between how someone describes themselves professionally and what their appearance signals to a room. Your job is to be honest, specific, and useful — not to define them, not to prescribe solutions, and not to assume anything they haven't told you.
+
+TONE: Like an experienced executive coach observing something useful and uncomfortable, from a position of genuine respect. Intelligent, observational, honest, respectful. Not harsh. Not flattering. Not neutral. The user should occasionally think: "That's probably true."
+
+CRITICAL RULES — Non-negotiable:
+— Never say: clothes, outfit, style, fashion, wardrobe, look, dress
+— Always say: signal, appearance, perception, impression, reading, projection
+— Quote their actual words from Q1–Q3 at least twice. Put quotes around exact words.
 — Reference specific numerical scores or dominant tags at least three times.
-
-HARD RULES:
-— Do NOT prescribe what they should do or wear
-— Do NOT define their brand or professional identity for them
+— When referencing what they said, always attribute it: "They described themselves as..." or "They said..."
+— Use observational language: "may", "the room may", "people may assume"
+— Leave the gap open at the end — unresolved tension is what creates desire to resolve it properly.
 — Do NOT soften findings with reassurance
-— Do NOT use words like: synthesise, archetype, dimensions, framework, signal matrix, brand DNA, or any academic terminology
-— Leave the gap open and unresolved at the end — this is intentional. The discomfort of an unresolved gap is what creates the desire to resolve it properly.
+— Do NOT prescribe what they should do
+— Do NOT define their professional identity for them
 
 OUTFIT SIGNAL DATA — ${snaps.length} reads:
 ${snapSummary}
 
 AVERAGE SCORES: socialCategory=${avg?.socialCategory}/10, cognitiveState=${avg?.cognitiveState}/10, status=${avg?.status}/10, aestheticCoherence=${avg?.aestheticCoherence}/10
-MOST CONSISTENT TAGS ACROSS ALL READS: ${dominantTags.join(", ")}
+DOMINANT SIGNALS ACROSS ALL READS: ${dominantTags.join(", ")}
 
-ASPIRATIONS:
-What they want to project: ${aspirations?.archetype || "not stated"}
-Priority context: ${aspirations?.context || "not stated"}
-Word they want to own: "${aspirations?.word || "not stated"}"
-
-THEIR OWN WORDS — from their answers:
+WHAT THEY'VE TOLD US:
 Q1. Three words for how they show up professionally: "${probeAnswers?.threeWords || "—"}"
 Q2. What they want people to remember after meeting them: "${probeAnswers?.knownFor || "—"}"
 Q3. How a colleague would introduce them: "${probeAnswers?.introduction || "—"}"
-Q4. How intentional they are about how they dress: "${probeAnswers?.intention || "—"}"
-Q5. How well they think their image matches their intention: "${probeAnswers?.match || "—"}"
+Q4. How intentional they are about how they appear: "${probeAnswers?.intention || "—"}"
+Q5. How well they think their perception matches their intention: "${probeAnswers?.match || "—"}"
 
-FOUR THINGS TO LOOK AT — work through all four, using their specific data:
+THEIR ASPIRATIONS:
+They want to project: ${aspirations?.archetype || "not stated"}
+Priority context: ${aspirations?.context || "not stated"}
+Word they want to own: "${aspirations?.word || "not stated"}"
 
-1. VAGUENESS: Read Q1–Q3 answers carefully. Words like "professional", "approachable", "strategic", "driven", "authentic", "collaborative" are things almost any competent person would say. They describe what someone is trying to avoid being, not who they actually are. If this person used words like that, quote them directly and note what that level of vagueness signals to a room that doesn't know them. If they were specific, acknowledge it — then find where the precision runs out at the next level.
+GENERATE THESE EIGHT SECTIONS:
 
-2. CONTRADICTION: Where does what the outfit photos show not match what they said about themselves? Quote their exact words from Q1 or Q2, then note the relevant score. E.g. "They described themselves as [exact word]. Their [what dimension] score averaged [score] across [n] reads — what the room may actually be reading is [different thing]." Use specific tags that sit in tension with their self-description.
+1. HEADLINE INSIGHT
+One sentence. The central truth this person's signal pattern reveals. Should feel precise, slightly uncomfortable, and professionally specific. This is the report's thesis. Reference their exact words and at least one score.
 
-3. BLIND SPOT: What do the consistent tags or scores show that their self-description doesn't touch at all? Often the most useful observation is the one they haven't thought to name yet. Quote the tag. Note their silence on it.
+2. WHAT THE ROOM IS READING
+What signals are being picked up. Write as pattern recognition, not description. Help them see themselves from the outside. Use their dominant tags. Reference specific scores. This should feel like an outside observer's honest read.
 
-4. THE FILTER: They assembled their self-image from the inside. The outfit reads came from the outside. Take their Q3 answer (how a colleague would introduce them) and place it next to the dominant tags. What did their internal picture assume that the external read didn't confirm?
+3. THE SIGNAL GAP
+Where intent and perception diverge. Name both sides explicitly. Name the distance without dramatising it. Quote what they said about themselves (Q1, Q2, or Q3). Place that next to what the scores and tags actually show. Professional, not personal.
 
-Return ONLY valid JSON — no preamble, no markdown fences:
+4. WHAT THIS MAY MEAN PROFESSIONALLY
+Connect the signal gap to real professional consequences. Use observational language ("may", "the room may", "people may assume"). Draw on: leadership assumptions, authority sequencing, room access, influence patterns, promotion signals, who gets listened to first. Be specific. Reference the context they mentioned or professional rooms generally.
+
+5. WHAT THIS MAY BE COSTING YOU
+Two to four short, direct statements. Name the hidden professional cost of the perception gap. Examples: being consulted but not deferred to. Being trusted but not followed. Having ideas accepted but not championed. Work with their specific data and aspirations.
+
+6. THE PREDICTIVE OBSERVATION
+One or two sentences beginning "This may explain why..." Connect the appearance pattern to a lived professional experience they will recognise. Reference their Q2 answer (what they want to be known for) or their aspirations. This is where the report earns credibility by naming something they've actually felt.
+
+7. WHAT THE NEXT SIGNAL REQUIRES
+What the next stage of their career tends to require from a perception standpoint. Never prescriptive. Never about appearance choices. Always about professional perception requirements. If their aspirations named a specific archetype or context, address what perception work would unlock that.
+
+8. THE CLOSE
+End with exactly: "The challenge is no longer understanding what the room sees. The challenge is deciding what the room should see instead."
+Precede it with one sentence that acknowledges their gap specifically — reference their exact words or a specific score that matters.
+
+Return ONLY valid JSON — no preamble, no markdown:
 {
-  "blindSpotHeadline": "One plain, honest sentence naming the central gap. Must reference their specific words from Q1 and a specific score. E.g. 'In their answers they described themselves as [their exact words] — but across [n] reads, what's coming through most consistently is [tag], not [their word].' Maximum 35 words. No jargon.",
-  "perceptionGap": "2–3 sentences. What do the outfit reads consistently show — and where does that sit against what they said about themselves? Quote their answer. Be specific about where the two views diverge. No solutions.",
-  "vaguenessDiagnosis": "1–2 sentences. Quote any generic or non-specific words from their answers directly. What does that level of definition — or lack of it — signal to a room that doesn't know them? If they were specific, note where precision next breaks down. Never skip this.",
-  "signalContradiction": "1–2 sentences. The clearest gap between a specific score or tag and a word they used. Name both. If there's no stark contradiction, name where the signal is thinner or more ambiguous than their description assumes.",
-  "theFilter": "2 sentences. Take their Q3 answer and place it next to the dominant tags. What did their internal picture assume that the outside read didn't confirm?",
-  "whatThisMeans": "2 sentences. Not solutions. What does operating with this gap cost them — in the context they mentioned, or in professional rooms generally? Reference the word they said they want to own and what the current gap puts between them and it.",
-  "closingProvocation": "One sentence. Specific to their gap. Should reference their own words or a specific score. Should make doing nothing feel like an active choice, not a passive one. Not motivational. Not generic. Should still be in their head tomorrow."
+  "headlineInsight": "One sentence naming the central truth. Must reference their specific words from Q1–Q3 and at least one score.",
+  "whatTheRoomIsReading": "2–3 sentences. Pattern recognition from their dominant tags and scores. Help them see themselves from the outside.",
+  "theSignalGap": "2–3 sentences. Quote what they said. Name what the signals show. Name the distance.",
+  "whatThisMayMeanProfessionally": "2–3 sentences. Professional consequences. Use 'may', 'the room may'. Reference leadership assumptions, authority, room access, influence, promotion signals.",
+  "whatThisMayBeCostingYou": "2–4 short statements. Hidden professional costs of the gap. Specific to their data.",
+  "thePredictiveObservation": "1–2 sentences beginning 'This may explain why...' Connect to a lived professional experience they'll recognise.",
+  "whatTheNextSignalRequires": "2 sentences. Perception requirements for their next career stage. Never prescriptive. Never about appearance choices.",
+  "theClose": "One sentence specific to their gap, then: 'The challenge is no longer understanding what the room sees. The challenge is deciding what the room should see instead.'"
 }`;
 };
 
@@ -332,7 +414,7 @@ function SignalRadar({ signals, targetSignals=null, compact=false }) {
       <SignalBar left="Ambiguous Tribe" right="Legible Archetype" value={socialCategory} color="var(--teal)" target={targetSignals?.socialCategory} />
       <SignalBar left="Context Misread" right="Context Aligned" value={cognitiveState} color="var(--green)" target={targetSignals?.cognitiveState} />
       <SignalBar left="Status Neutral" right="Status Projected" value={status} color="var(--amber)" target={targetSignals?.status} />
-      <SignalBar left="Incoherent" right="Considered" value={aestheticCoherence} color="var(--teal)" target={targetSignals?.aestheticCoherence} />
+      <SignalBar left="Incoherent" right="Considered" value={aestheticCoherence} color="var(--mauve)" target={targetSignals?.aestheticCoherence} />
       {targetSignals && <p style={{ fontSize:10, color:"var(--muted)", marginTop:6, fontStyle:"italic" }}>Solid = current · Dashed = aspired</p>}
     </div>
   );
@@ -381,11 +463,12 @@ function Nav({ screen, setScreen, snapCount, personaReady, reportReady }) {
   );
 }
 
-// ─── Aspiration Modal 1 — Archetype + Context (after snap 1) ─────────────────
-function AspirationModal1({ onSave }) {
+// ─── Aspiration Modal ─────────────────────────────────────────────────────────
+function AspirationModal({ onSave }) {
   const [archetype, setArchetype] = useState("");
   const [context,   setContext]   = useState("");
-  const ready = archetype && context;
+  const [word,      setWord]      = useState("");
+  const ready = archetype && context && word.trim();
 
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(20,20,18,0.65)", zIndex:300, display:"flex", alignItems:"center", justifyContent:"center", padding:20, animation:"fadeIn 0.3s ease" }}>
@@ -396,7 +479,7 @@ function AspirationModal1({ onSave }) {
             What are you aiming to project?
           </h2>
           <p style={{ fontSize:13, color:"var(--muted)", lineHeight:1.75, fontWeight:300, marginBottom:28 }}>
-            Two quick questions. Your answers become the target your signal pattern is measured against.
+            Three quick questions. Your answers become the target your signal pattern is measured against.
           </p>
         </div>
 
@@ -427,37 +510,14 @@ function AspirationModal1({ onSave }) {
             </div>
           </div>
 
-          <button onClick={() => ready && onSave({ archetype, context })} disabled={!ready}
-            style={{ background:ready?"var(--ink)":"transparent", border:`1.5px solid ${ready?"var(--ink)":"var(--border)"}`, color:ready?"var(--bg)":"var(--muted)", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.16em", textTransform:"uppercase", padding:"14px", cursor:ready?"pointer":"default", transition:"all 0.18s" }}>
-            Next Snap →
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+          <div>
+            <p style={{ fontFamily:"var(--serif)", fontSize:15, fontWeight:400, marginBottom:4 }}>In one word — what do you want people to feel after meeting you?</p>
+            <p style={{ fontSize:11, color:"var(--muted)", fontWeight:300, marginBottom:12 }}>Not a word for you — a feeling in them. Assured. Challenged. Trusted. Inspired.</p>
+            <input value={word} onChange={e => setWord(e.target.value)} placeholder="e.g. Trusted" maxLength={30}
+              style={{ width:"100%", background:"white", border:"1.5px solid var(--border)", borderLeft:"3px solid var(--teal)", color:"var(--ink)", fontFamily:"var(--serif)", fontSize:18, fontWeight:300, fontStyle:"italic", padding:"12px 16px", outline:"none" }} />
+          </div>
 
-// ─── Aspiration Modal 2 — Word (after snap 2) ─────────────────────────────────
-function AspirationModal2({ existing, onSave }) {
-  const [word, setWord] = useState("");
-  const ready = word.trim().length > 0;
-
-  return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(20,20,18,0.65)", zIndex:300, display:"flex", alignItems:"center", justifyContent:"center", padding:20, animation:"fadeIn 0.3s ease" }}>
-      <div style={{ background:"var(--bg)", border:"1.5px solid var(--bstrong)", maxWidth:540, width:"100%", animation:"slideUp 0.3s ease both" }}>
-        <div style={{ padding:"28px 28px 0" }}>
-          <Cap style={{ marginBottom:10 }}>One more thing</Cap>
-          <h2 style={{ fontFamily:"var(--serif)", fontSize:"clamp(24px,4vw,32px)", fontWeight:300, lineHeight:1.1, marginBottom:10 }}>
-            What do you want people to feel?
-          </h2>
-          <p style={{ fontSize:13, color:"var(--muted)", lineHeight:1.75, fontWeight:300, marginBottom:28 }}>
-            Not a word for you — a feeling in them. Assured. Challenged. Trusted. Inspired.
-          </p>
-        </div>
-        <div style={{ padding:"0 28px 28px", display:"flex", flexDirection:"column", gap:26 }}>
-          <input value={word} onChange={e => setWord(e.target.value)} placeholder="e.g. Trusted" maxLength={30}
-            style={{ width:"100%", background:"white", border:"1.5px solid var(--border)", borderLeft:"3px solid var(--teal)", color:"var(--ink)", fontFamily:"var(--serif)", fontSize:18, fontWeight:300, fontStyle:"italic", padding:"12px 16px", outline:"none" }} />
-          <button onClick={() => ready && onSave({ ...existing, word:word.trim() })} disabled={!ready}
+          <button onClick={() => ready && onSave({ archetype, context, word:word.trim() })} disabled={!ready}
             style={{ background:ready?"var(--ink)":"transparent", border:`1.5px solid ${ready?"var(--ink)":"var(--border)"}`, color:ready?"var(--bg)":"var(--muted)", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.16em", textTransform:"uppercase", padding:"14px", cursor:ready?"pointer":"default", transition:"all 0.18s" }}>
             Set My Target →
           </button>
@@ -469,28 +529,121 @@ function AspirationModal2({ existing, onSave }) {
 
 // ─── HOME / AUDIT ─────────────────────────────────────────────────────────────
 function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspiration, setScreen }) {
-  const [preview,  setPreview]  = useState(null);
-  const [base64,   setBase64]   = useState(null);
-  const [loading,  setLoading]  = useState(false);
-  const [result,   setResult]   = useState(null);
+  const [preview,      setPreview]      = useState(null);
+  const [base64,       setBase64]       = useState(null);
+  const [loading,      setLoading]      = useState(false);
+  const [result,       setResult]       = useState(null);
+  const [cameraMode,   setCameraMode]   = useState(false);
+  const [cameraError,  setCameraError]  = useState(null);
+  const [status,       setStatus]       = useState(null);
+  const [error,        setError]        = useState(null);
+  const videoRef      = useRef(null);
+  const canvasRef     = useRef(null);
+  const streamRef     = useRef(null);
   const latest  = snaps[snaps.length - 1];
   const done    = snaps.length >= SNAPS_REQUIRED;
+  const MAX_FILE_SIZE = 8 * 1024 * 1024; // 8MB
+
+  const startCamera = async () => {
+    setError(null);
+    setCameraError(null);
+    try {
+      setStatus("Requesting camera access…");
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      setCameraMode(true);
+      setStatus(null);
+    } catch (err) {
+      const msg = err.name === "NotAllowedError" 
+        ? "Camera permission denied. Please allow camera access in your browser settings."
+        : err.name === "NotFoundError"
+        ? "No camera found on this device."
+        : `Camera error: ${err.message}`;
+      setCameraError(msg);
+      setStatus(null);
+    }
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const ctx = canvasRef.current.getContext("2d");
+    canvasRef.current.width = videoRef.current.videoWidth;
+    canvasRef.current.height = videoRef.current.videoHeight;
+    ctx.drawImage(videoRef.current, 0, 0);
+    const dataUrl = canvasRef.current.toDataURL("image/jpeg", 0.85);
+    setPreview(dataUrl);
+    setBase64(dataUrl.split(",")[1]);
+    stopCamera();
+    setStatus(null);
+    setError(null);
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setCameraMode(false);
+    setCameraError(null);
+  };
 
   const handleFile = f => {
     if (!f) return;
+    setError(null);
+    setStatus("Reading image…");
+    
+    // Validate file size
+    if (f.size > MAX_FILE_SIZE) {
+      setError(`Image is too large (${(f.size / 1024 / 1024).toFixed(1)}MB). Please use an image under 8MB.`);
+      setStatus(null);
+      return;
+    }
+
     const r = new FileReader();
-    r.onload = e => { setPreview(e.target.result); setBase64(e.target.result.split(",")[1]); setResult(null); };
+    r.onload = e => {
+      setStatus("Converting image…");
+      try {
+        const dataUrl = e.target.result;
+        const b64 = dataUrl.split(",")[1];
+        if (!b64) throw new Error("Failed to extract image data");
+        setPreview(dataUrl);
+        setBase64(b64);
+        setResult(null);
+        setStatus(null);
+        setError(null);
+      } catch (err) {
+        setError(`Failed to process image: ${err.message}`);
+        setStatus(null);
+      }
+    };
+    r.onerror = () => {
+      setError("Failed to read image file. Please try again.");
+      setStatus(null);
+    };
     r.readAsDataURL(f);
   };
 
   const analyse = async () => {
     if (!base64) return;
     setLoading(true);
+    setError(null);
     try {
+      setStatus("Sending to Claude…");
       const reply  = await callClaude([{ role:"user", content:"Analyse the professional signals in this outfit." }], SNAP_ANALYSIS_SYSTEM, base64);
+      
+      setStatus("Parsing response…");
       const parsed = parseJSON(reply);
-      if (!parsed) throw new Error("parse fail");
+      if (!parsed) {
+        throw new Error("Claude returned invalid data. Please try again.");
+      }
 
+      setStatus("Saving snap…");
       const snap = {
         id:            Date.now().toString(),
         timestamp:     new Date().toISOString(),
@@ -526,14 +679,24 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
       if (newSnaps.length === 1 && !aspirations) {
         setTimeout(() => setShowAspiration(true), 900);
       }
-      if (newSnaps.length === 2 && aspirations && !aspirations.word) {
-        setTimeout(() => { setAspirationStage(2); setShowAspiration(true); }, 900);
-      }
-    } catch(e) { console.error(e); }
+      setStatus(null);
+    } catch(e) {
+      console.error(e);
+      setError(`Analysis failed: ${e.message}`);
+      setStatus(null);
+    }
     setLoading(false);
   };
 
-  const reset = () => { setPreview(null); setBase64(null); setResult(null); };
+  const reset = () => { setPreview(null); setBase64(null); setResult(null); setError(null); setStatus(null); };
+
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
 
   return (
     <div style={{ minHeight:"100vh", paddingTop:56 }}>
@@ -570,8 +733,45 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
             </div>
           </div>
 
+        ) : cameraMode ? (
+          <div style={{ animation:"fadeUp 0.4s ease both" }}>
+            <div style={{ background:"white", border:"1.5px solid var(--bstrong)", overflow:"hidden", marginBottom:14 }}>
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                style={{ width:"100%", height:"auto", display:"block" }}
+              />
+            </div>
+            <div style={{ display:"flex", gap:10, justifyContent:"center" }}>
+              <button onClick={capturePhoto}
+                style={{ background:"var(--ink)", color:"var(--bg)", border:"none", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.16em", textTransform:"uppercase", padding:"13px 32px", cursor:"pointer" }}>
+                📸 Capture
+              </button>
+              <button onClick={stopCamera}
+                style={{ background:"none", border:"1.5px solid var(--border)", color:"var(--muted)", fontFamily:"var(--sans)", fontSize:11, letterSpacing:"0.1em", textTransform:"uppercase", padding:"13px 20px", cursor:"pointer" }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+
         ) : !result ? (
           <div style={{ animation:"fadeUp 0.4s ease both" }}>
+            {/* Error box */}
+            {error && (
+              <div style={{ marginBottom:16, padding:"16px 18px", background:"rgba(176,106,32,0.08)", border:"1.5px solid rgba(176,106,32,0.2)", borderRadius:2 }}>
+                <p style={{ fontSize:12, color:"var(--amber)", fontWeight:400, lineHeight:1.6 }}>⚠ {error}</p>
+              </div>
+            )}
+
+            {/* Status message */}
+            {status && (
+              <div style={{ marginBottom:16, padding:"14px 16px", background:"var(--teal-bg)", border:"1px solid rgba(29,158,117,0.2)", display:"flex", gap:10, alignItems:"center" }}>
+                <div style={{ width:3, height:3, borderRadius:"50%", background:"var(--teal)", animation:"pulse 1.2s ease infinite" }} />
+                <p style={{ fontSize:12, color:"var(--teal)", fontWeight:400 }}>{status}</p>
+              </div>
+            )}
+
             <div
               onDrop={e => { e.preventDefault(); handleFile(e.dataTransfer.files[0]); }}
               onDragOver={e => e.preventDefault()}
@@ -586,7 +786,7 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
                         <div style={{ position:"absolute", left:0, right:0, height:2, background:"linear-gradient(90deg, transparent, var(--teal), transparent)", opacity:0.6, animation:"scanline 1.8s linear infinite" }} />
                       </div>
                       <Spinner size={20} />
-                      <div style={{ textAlign:"center" }}><p style={{ fontSize:11, letterSpacing:"0.18em", textTransform:"uppercase", color:"var(--teal)", fontWeight:500, marginBottom:6 }}>Analysing your signal</p><p style={{ fontSize:11, color:"var(--muted)", fontWeight:300, fontStyle:"italic" }}>Reading what the room would see…</p></div>
+                      <p style={{ fontSize:11, letterSpacing:"0.18em", textTransform:"uppercase", color:"var(--teal)", fontWeight:400 }}>Reading signals…</p>
                     </div>
                   )}
                 </>
@@ -596,7 +796,7 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
                     <div style={{ width:22, height:22, borderRadius:"50%", border:"1.5px solid var(--teal-lt)" }} />
                   </div>
                   <p style={{ fontFamily:"var(--serif)", fontSize:20, marginBottom:8, fontWeight:300 }}>Photograph your outfit</p>
-                  <p style={{ fontSize:12, color:"var(--muted)", fontWeight:300, lineHeight:1.7 }}>Drop an image, or use the button below.<br />Full outfit gives the sharpest read.</p>
+                  <p style={{ fontSize:12, color:"var(--muted)", fontWeight:300, lineHeight:1.7 }}>Drop an image, or use the buttons below.<br />Full outfit gives the sharpest read.</p>
                   {aspirations && (
                     <div style={{ marginTop:20, padding:"10px 18px", background:"var(--teal-bg)", border:"1px solid rgba(29,158,117,0.15)", display:"inline-flex", gap:12, alignItems:"center" }}>
                       <span style={{ width:6, height:6, borderRadius:"50%", background:"var(--teal)", display:"inline-block", animation:"pulse 2.5s ease infinite" }} />
@@ -610,9 +810,17 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
             <input id="read-file-input" type="file" accept="image/*" style={{ display:"none" }} onChange={e => { handleFile(e.target.files[0]); e.target.value=""; }} />
 
             {!preview ? (
-              <label htmlFor="read-file-input" style={{ marginTop:14, display:"flex", alignItems:"center", justifyContent:"center", background:"var(--ink)", color:"var(--bg)", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.16em", textTransform:"uppercase", padding:"13px", cursor:"pointer", userSelect:"none" }}>
-                Upload or Take Photo
-              </label>
+              <div style={{ display:"flex", gap:10, marginTop:14 }}>
+                <label htmlFor="read-file-input" style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", background:"var(--ink)", color:"var(--bg)", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.16em", textTransform:"uppercase", padding:"13px", cursor:"pointer", userSelect:"none" }}>
+                  📁 Upload Photo
+                </label>
+                {navigator.mediaDevices?.getUserMedia && (
+                  <button onClick={startCamera}
+                    style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", background:"var(--ink)", color:"var(--bg)", border:"none", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.16em", textTransform:"uppercase", padding:"13px", cursor:"pointer" }}>
+                    📷 Open Camera
+                  </button>
+                )}
+              </div>
             ) : (
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:14 }}>
                 <button onClick={reset} style={{ background:"none", border:"none", color:"var(--muted)", fontSize:11, letterSpacing:"0.1em", textTransform:"uppercase", cursor:"pointer", fontFamily:"var(--sans)" }}>✕ Remove</button>
@@ -620,6 +828,12 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
                   style={{ background:base64&&!loading?"var(--ink)":"transparent", border:`1.5px solid ${base64&&!loading?"var(--ink)":"var(--border)"}`, color:base64&&!loading?"var(--bg)":"var(--muted)", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.16em", textTransform:"uppercase", padding:"13px 32px", cursor:base64&&!loading?"pointer":"default", display:"flex", alignItems:"center", gap:10, transition:"all 0.18s" }}>
                   {loading ? <><Spinner size={13} /><span>Reading signals…</span></> : "Read My Signals"}
                 </button>
+              </div>
+            )}
+
+            {cameraError && (
+              <div style={{ marginTop:16, padding:"14px 16px", background:"rgba(176,106,32,0.08)", border:"1.5px solid rgba(176,106,32,0.2)", borderRadius:2 }}>
+                <p style={{ fontSize:12, color:"var(--amber)", fontWeight:400, lineHeight:1.6 }}>⚠ {cameraError}</p>
               </div>
             )}
 
@@ -669,11 +883,15 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
 
             <div style={{ display:"flex", gap:10 }}>
               <button onClick={reset} style={{ flex:1, background:"var(--ink)", color:"var(--bg)", border:"none", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.14em", textTransform:"uppercase", padding:"13px", cursor:"pointer" }}>
-                {done ? "All Done" : "Next Snap →"}
+                {done ? "All Done" : "Next Snap"}
               </button>
-              {done && (
+              {done ? (
                 <button onClick={() => setScreen(SCREENS.REPORT)} style={{ flex:1, background:"none", border:"1px solid var(--bstrong)", color:"var(--ink)", fontFamily:"var(--sans)", fontSize:11, letterSpacing:"0.14em", textTransform:"uppercase", padding:"13px", cursor:"pointer" }}>
-                  Discover Your Signal →
+                  View Report →
+                </button>
+              ) : (
+                <button onClick={() => setScreen(SCREENS.SIGNALS)} style={{ flex:1, background:"none", border:"1px solid var(--bstrong)", color:"var(--ink)", fontFamily:"var(--sans)", fontSize:11, letterSpacing:"0.14em", textTransform:"uppercase", padding:"13px", cursor:"pointer" }}>
+                  View Signals →
                 </button>
               )}
             </div>
@@ -681,6 +899,7 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
           </div>
         )}
       </div>
+      <canvas ref={canvasRef} style={{ display:"none" }} />
     </div>
   );
 }
@@ -742,7 +961,7 @@ function SignalsScreen({ snaps, persona, setPersona }) {
 
             {persona ? (
               <div style={{ padding:"24px", background:"white", border:"1.5px solid var(--bstrong)", borderTop:"3px solid var(--teal)", animation:"pop 0.5s ease both" }}>
-                <Cap style={{ marginBottom:12 }}>Your Signal Profile</Cap>
+                <Cap style={{ marginBottom:12 }}>Emerging Persona</Cap>
                 <h3 style={{ fontFamily:"var(--serif)", fontSize:22, fontWeight:300, marginBottom:14 }}>{persona.headline}</h3>
                 <p style={{ fontSize:13, lineHeight:1.85, fontWeight:300, color:"var(--muted)", fontStyle:"italic", marginBottom:16 }}>{persona.summary}</p>
                 {persona.dominantSignals?.length>0 && (
@@ -770,12 +989,12 @@ function SignalsScreen({ snaps, persona, setPersona }) {
             ) : ready ? (
               <button onClick={synthesise} disabled={synthesising}
                 style={{ background:synthesising?"transparent":"var(--ink)", border:`1.5px solid ${synthesising?"var(--border)":"var(--ink)"}`, color:synthesising?"var(--muted)":"var(--bg)", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.16em", textTransform:"uppercase", padding:"16px", cursor:synthesising?"default":"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:12 }}>
-                {synthesising ? <><Spinner size={14} /><span>Synthesising…</span></> : "✦ Build My Signal Profile"}
+                {synthesising ? <><Spinner size={14} /><span>Synthesising…</span></> : "✦ Synthesise My Persona"}
               </button>
             ) : (
               <div style={{ padding:"16px 20px", background:"var(--surface)", border:"1px solid var(--border)" }}>
                 <p style={{ fontSize:13, color:"var(--muted)", fontWeight:300 }}>
-                  Signal profile available after {MIN_FOR_PERSONA - snaps.length} more snap{MIN_FOR_PERSONA-snaps.length!==1?"s":""}.
+                  Persona synthesis available after {MIN_FOR_PERSONA - snaps.length} more snap{MIN_FOR_PERSONA-snaps.length!==1?"s":""}.
                 </p>
               </div>
             )}
@@ -814,18 +1033,18 @@ function ShareCard({ persona, avgSignals }) {
     { left:"Ambiguous Tribe",  right:"Legible Archetype", value:avgSignals?.socialCategory||5,     color:"var(--teal)" },
     { left:"Context Misread",  right:"Context Aligned",   value:avgSignals?.cognitiveState||5,     color:"var(--green)" },
     { left:"Status Neutral",   right:"Status Projected",  value:avgSignals?.status||5,             color:"var(--amber)" },
-    { left:"Incoherent",       right:"Considered",        value:avgSignals?.aestheticCoherence||5, color:"var(--teal)" },
+    { left:"Incoherent",       right:"Considered",        value:avgSignals?.aestheticCoherence||5, color:"var(--mauve)" },
   ];
   return (
-    <div style={{ background:"white", padding:"32px 28px", maxWidth:360, border:"1.5px solid var(--border)" }}>
+    <div style={{ background:"var(--ink)", padding:"32px 28px", maxWidth:360, border:"1.5px solid var(--ink)" }}>
       <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:26 }}>
         <div style={{ width:16, height:16, borderRadius:"50%", border:"1px solid var(--teal)", display:"flex", alignItems:"center", justifyContent:"center" }}>
           <div style={{ width:5, height:5, borderRadius:"50%", background:"var(--teal)" }} />
         </div>
-        <span style={{ fontFamily:"var(--serif)", fontSize:13, fontWeight:400, letterSpacing:"0.06em", color:"var(--muted)" }}>Signl</span>
+        <span style={{ fontFamily:"var(--serif)", fontSize:13, fontWeight:400, letterSpacing:"0.06em", color:"rgba(248,247,245,0.55)" }}>Signl</span>
       </div>
       <p style={{ fontSize:9, letterSpacing:"0.2em", textTransform:"uppercase", color:"var(--teal)", fontFamily:"var(--sans)", fontWeight:500, marginBottom:10 }}>My Signal Profile</p>
-      <h2 style={{ fontFamily:"var(--serif)", fontSize:"clamp(20px,4vw,28px)", fontWeight:300, lineHeight:1.1, color:"var(--ink)", marginBottom:22 }}>
+      <h2 style={{ fontFamily:"var(--serif)", fontSize:"clamp(20px,4vw,28px)", fontWeight:300, lineHeight:1.1, color:"var(--bg)", marginBottom:22 }}>
         {persona.headline}
       </h2>
       {avgSignals && (
@@ -835,11 +1054,11 @@ function ShareCard({ persona, avgSignals }) {
             return (
               <div key={i} style={{ marginBottom:13 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:5 }}>
-                  <span style={{ fontSize:9, color:"var(--muted)", letterSpacing:"0.08em", textTransform:"uppercase" }}>{bar.left}</span>
-                  <span style={{ fontSize:9, color:"var(--muted)", letterSpacing:"0.08em", textTransform:"uppercase" }}>{bar.right}</span>
+                  <span style={{ fontSize:9, color:"rgba(248,247,245,0.35)", letterSpacing:"0.08em", textTransform:"uppercase" }}>{bar.left}</span>
+                  <span style={{ fontSize:9, color:"rgba(248,247,245,0.35)", letterSpacing:"0.08em", textTransform:"uppercase" }}>{bar.right}</span>
                 </div>
-                <div style={{ position:"relative", height:1, background:"var(--border)", borderRadius:1 }}>
-                  <div style={{ position:"absolute", left:`${pct}%`, transform:"translateX(-50%)", top:-4, width:9, height:9, borderRadius:"50%", background:bar.color, border:"1.5px solid white" }} />
+                <div style={{ position:"relative", height:1, background:"rgba(248,247,245,0.12)", borderRadius:1 }}>
+                  <div style={{ position:"absolute", left:`${pct}%`, transform:"translateX(-50%)", top:-4, width:9, height:9, borderRadius:"50%", background:bar.color, border:"1.5px solid var(--ink)" }} />
                 </div>
               </div>
             );
@@ -853,8 +1072,8 @@ function ShareCard({ persona, avgSignals }) {
           ))}
         </div>
       )}
-      <div style={{ height:1, background:"var(--border)", marginBottom:16 }} />
-      <p style={{ fontSize:9, color:"var(--muted)", letterSpacing:"0.14em", textTransform:"uppercase", fontFamily:"var(--sans)" }}>Signl — by Dfine</p>
+      <div style={{ height:1, background:"rgba(248,247,245,0.1)", marginBottom:16 }} />
+      <p style={{ fontSize:9, color:"rgba(248,247,245,0.25)", letterSpacing:"0.14em", textTransform:"uppercase", fontFamily:"var(--sans)" }}>Signl — by Dfine</p>
     </div>
   );
 }
@@ -1000,21 +1219,22 @@ function ProbeModal({ onComplete, onClose }) {
 // ─── DEEP REPORT DISPLAY ──────────────────────────────────────────────────────
 function DeepReportDisplay({ report, probeAnswers, aspirations, onRegenerate }) {
   const sections = [
-    { label:"What the room reads",        content:report.perceptionGap },
-    { label:"On definition",              content:report.vaguenessDiagnosis },
-    { label:"Where the signals diverge",  content:report.signalContradiction },
-    { label:"The filter",                 content:report.theFilter },
-    { label:"What this costs",            content:report.whatThisMeans },
+    { label:"What the room is reading",          content:report.whatTheRoomIsReading,         color:"var(--teal)" },
+    { label:"The signal gap",                    content:report.theSignalGap,                  color:"var(--amber)" },
+    { label:"What this may mean professionally", content:report.whatThisMayMeanProfessionally, color:"var(--green)" },
+    { label:"What this may be costing you",      content:report.whatThisMayBeCostingYou,       color:"var(--teal)" },
+    { label:"The predictive observation",        content:report.thePredictiveObservation,      color:"var(--amber)" },
+    { label:"What the next signal requires",     content:report.whatTheNextSignalRequires,     color:"var(--green)" },
   ];
 
   return (
     <div style={{ display:"flex", flexDirection:"column", animation:"fadeUp 0.5s ease both" }}>
 
-      {/* Blind spot headline — the centrepiece */}
+      {/* Headline insight — the centrepiece */}
       <div style={{ padding:"32px 28px 28px", background:"white", border:"1.5px solid var(--bstrong)", borderTop:"3px solid var(--teal)" }}>
-        <Cap style={{ marginBottom:16 }}>Your Perception Gap</Cap>
+        <Cap style={{ marginBottom:16 }}>Professional Perception Analysis</Cap>
         <p style={{ fontFamily:"var(--serif)", fontSize:"clamp(18px,3vw,26px)", fontWeight:300, lineHeight:1.28, color:"var(--ink)" }}>
-          {report.blindSpotHeadline}
+          {report.headlineInsight}
         </p>
       </div>
 
@@ -1026,9 +1246,15 @@ function DeepReportDisplay({ report, probeAnswers, aspirations, onRegenerate }) 
             <p style={{ fontFamily:"var(--serif)", fontSize:14, fontStyle:"italic", color:"var(--ink)" }}>"{probeAnswers.threeWords}"</p>
           </div>
         )}
+        {probeAnswers?.knownFor && (
+          <div>
+            <p style={{ fontSize:9, color:"var(--muted)", letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:4 }}>You want them to remember you for</p>
+            <p style={{ fontFamily:"var(--serif)", fontSize:14, fontStyle:"italic", color:"var(--ink)" }}>"{probeAnswers.knownFor}"</p>
+          </div>
+        )}
         {aspirations?.word && (
           <div>
-            <p style={{ fontSize:9, color:"var(--muted)", letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:4 }}>You want them to feel</p>
+            <p style={{ fontSize:9, color:"var(--muted)", letterSpacing:"0.14em", textTransform:"uppercase", marginBottom:4 }}>The word you want to own</p>
             <p style={{ fontFamily:"var(--serif)", fontSize:14, fontStyle:"italic", color:"var(--teal)" }}>"{aspirations.word}"</p>
           </div>
         )}
@@ -1036,16 +1262,16 @@ function DeepReportDisplay({ report, probeAnswers, aspirations, onRegenerate }) 
 
       {/* Analysis sections */}
       {sections.map((section, i) => (
-        <div key={i} style={{ padding:"22px 28px", background:i%2===0?"white":"var(--surface)", borderBottom:"1px solid var(--border)", borderLeft:`3px solid ${i===0?"var(--teal)":i===1?"var(--amber)":i===2?"var(--green)":"var(--border)"}`, animation:`fadeUp 0.4s ease ${i*0.07}s both` }}>
+        <div key={i} style={{ padding:"22px 28px", background:i%2===0?"white":"var(--surface)", borderBottom:"1px solid var(--border)", borderLeft:`3px solid ${section.color}`, animation:`fadeUp 0.4s ease ${i*0.07}s both` }}>
           <Cap style={{ marginBottom:10, color:"var(--muted)" }}>{section.label}</Cap>
           <p style={{ fontSize:14, lineHeight:1.9, fontWeight:300, fontFamily:"var(--serif)" }}>{section.content}</p>
         </div>
       ))}
 
-      {/* Closing provocation */}
+      {/* The close — includes both setup and the closing statement */}
       <div style={{ padding:"26px 28px", background:"var(--teal-bg)", borderLeft:"3px solid var(--teal)", borderBottom:"1px solid var(--border)" }}>
-        <p style={{ fontFamily:"var(--serif)", fontSize:18, lineHeight:1.75, fontStyle:"italic", color:"var(--ink)", fontWeight:300 }}>
-          "{report.closingProvocation}"
+        <p style={{ fontFamily:"var(--serif)", fontSize:15, lineHeight:1.85, fontStyle:"italic", color:"var(--ink)", fontWeight:300 }}>
+          {report.theClose}
         </p>
       </div>
 
@@ -1057,13 +1283,13 @@ function DeepReportDisplay({ report, probeAnswers, aspirations, onRegenerate }) 
           <span style={{ color:"var(--teal-lt)", fontStyle:"italic" }}>Dfine defines it, articulates it, and dresses you to show up that way.</span>
         </h3>
         <p style={{ fontSize:13, color:"rgba(248,247,245,0.5)", lineHeight:1.9, fontWeight:300, marginBottom:6 }}>
-          Signl showed you what the room sees. Dfine decides what you want them to see. They're different sessions — and you need both.
+          Signl showed you what the room sees. Dfine decides what you want them to see. They're different experiences — and you need both.
         </p>
-        <p style={{ fontSize:13, color:"rgba(248,247,245,0.5)", lineHeight:1.9, fontWeight:300, marginBottom:26 }}>
-          Dfine is a guided session that surfaces your archetype, positioning, tone of voice, and style direction — turning a vague professional instinct into something precise and ownable.
-          {aspirations?.archetype ? ` You said you're aiming toward ${aspirations.archetype}. Dfine defines what that actually means for you specifically.` : ""}
+        <p style={{ fontSize:13, color:"rgba(248,247,245,0.5)", lineHeight:1.9, fontWeight:300, marginBottom:10 }}>
+          Dfine is a guided platform that surfaces your archetype, positioning, tone of voice, and perception strategy — turning a vague professional instinct into something precise and ownable.
+          {aspirations?.archetype ? ` You described your direction as ${aspirations.archetype}. Dfine defines what that actually means for you specifically.` : ""}
         </p>
-        <a href="https://persona.app" target="_blank" rel="noopener noreferrer"
+        <a href="https://dfine.app" target="_blank" rel="noopener noreferrer"
           style={{ display:"inline-block", background:"var(--teal)", color:"white", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.16em", textTransform:"uppercase", padding:"14px 34px", cursor:"pointer", textDecoration:"none" }}>
           Discover Dfine →
         </a>
@@ -1117,17 +1343,14 @@ function DeepReportSection({ snaps, aspirations, deepReport, setDeepReport, prob
         How close is the professional you think you project<br />
         <span style={{ color:"var(--teal-lt)", fontStyle:"italic" }}>to the one the room actually sees?</span>
       </h3>
-      <p style={{ fontSize:13, color:"rgba(248,247,245,0.6)", lineHeight:1.85, fontWeight:300, marginBottom:8 }}>
-        Most people assume the gap is small. It rarely is.
-      </p>
       <p style={{ fontSize:13, color:"rgba(248,247,245,0.5)", lineHeight:1.85, fontWeight:300, marginBottom:8 }}>
-        Five questions. We compare what you say you project with what your signal data actually shows. The distance between those two things is where your brand either lands or leaks.
+        Five questions. We compare what you say you project with what your signal data actually shows. Most people are surprised by the distance — not because they're wrong, but because they haven't looked closely enough.
       </p>
       <p style={{ fontSize:12, color:"rgba(248,247,245,0.35)", lineHeight:1.75, fontWeight:300, marginBottom:6, fontStyle:"italic" }}>
         You'll answer five questions before your report is revealed — not after. The thinking you do is what makes the report specific to you. The paywall comes at the end because that's when it means the most.
       </p>
       <p style={{ fontSize:11, color:"rgba(248,247,245,0.28)", lineHeight:1.75, fontWeight:300, marginBottom:28 }}>
-        $10 one-off · Credited to your first month if you go on to try Dfine
+        $10 one-off · Credited to your first month if you go on to try persona
       </p>
       {/* ── Payment integration point ──
           Replace the onClick below with your payment flow.
@@ -1136,7 +1359,7 @@ function DeepReportSection({ snaps, aspirations, deepReport, setDeepReport, prob
       <button
         onClick={() => { setUnlocked(true); setShowProbe(true); }}
         style={{ background:"var(--teal)", color:"white", border:"none", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.16em", textTransform:"uppercase", padding:"14px 34px", cursor:"pointer" }}>
-        Deep Report — $10
+        Unlock Deep Report — $10
       </button>
     </div>
   );
@@ -1178,9 +1401,9 @@ function DeepReportSection({ snaps, aspirations, deepReport, setDeepReport, prob
 }
 
 // ─── REPORT SCREEN ────────────────────────────────────────────────────────────
-function ReportScreen({ snaps, aspirations, persona, setPersona, reportData, setReportData, deepReport, setDeepReport, probeAnswers, setProbeAnswers }) {
-  const [generating, setGenerating] = useState(false);
-  const [showCard,   setShowCard]   = useState(false);
+function ReportScreen({ snaps, aspirations, persona, reportData, setReportData, deepReport, setDeepReport, probeAnswers, setProbeAnswers, consequences, setConsequences }) {
+  const [generating,   setGenerating]   = useState(false);
+  const [showCard,     setShowCard]     = useState(false);
   const avg   = avgSignalsFrom(snaps);
   const ready = snaps.length >= SNAPS_REQUIRED;
 
@@ -1191,21 +1414,25 @@ function ReportScreen({ snaps, aspirations, persona, setPersona, reportData, set
     if (!ready) return;
     setGenerating(true);
     try {
+      // Step 1: Generate gap analysis
       const reply  = await callClaude([{ role:"user", content:"Generate my signal gap analysis report." }], buildGapAnalysisSystem(snaps, aspirations), null, 1200);
       const parsed = parseJSON(reply);
       setReportData(parsed || null);
+
+      // Step 2: Generate consequence layer if gaps exist
+      if (parsed?.signalGaps && parsed.signalGaps.length > 0) {
+        const consequenceReply = await callClaude(
+          [{ role:"user", content:"Generate consequence statements for each signal gap, naming specific professional outcomes." }],
+          buildConsequenceLayerSystem(parsed.signalGaps, aspirations),
+          null,
+          1000
+        );
+        const consequenceParsed = parseJSON(consequenceReply);
+        setConsequences(consequenceParsed || null);
+      }
     } catch(e) { console.error(e); }
     setGenerating(false);
   };
-
-  // Auto-generate persona if not yet available, so Signal Card renders
-  useEffect(() => {
-    if (ready && !persona) {
-      callClaude([{ role:"user", content:"Synthesise my Brand Persona." }], buildPersonaSynthesisSystem(snaps), null, 1000)
-        .then(reply => { const p = parseJSON(reply); if (p) setPersona(p); })
-        .catch(() => {});
-    }
-  }, [ready]);
 
   useEffect(() => { if (ready && !reportData && !generating) generate(); }, [ready]);
 
@@ -1239,43 +1466,68 @@ function ReportScreen({ snaps, aspirations, persona, setPersona, reportData, set
         ) : reportData ? (
           <div style={{ display:"flex", flexDirection:"column", gap:14, animation:"fadeUp 0.5s ease both" }}>
 
-            {/* Current vs Aspired — stark direct framing */}
-            <div style={{ padding:"28px 24px", background:"white", border:"1.5px solid var(--bstrong)", borderTop:"3px solid var(--teal)", animation:"fadeUp 0.4s ease both" }}>
-              <Cap style={{ marginBottom:16, color:"var(--muted)" }}>Your Signal Gap</Cap>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:2, marginBottom:20 }}>
-                <div style={{ padding:"18px 20px", background:"var(--surface)", border:"1px solid var(--border)" }}>
-                  <p style={{ fontSize:9, letterSpacing:"0.16em", textTransform:"uppercase", color:"var(--muted)", fontWeight:500, marginBottom:10 }}>The room reads you as</p>
-                  <h3 style={{ fontFamily:"var(--serif)", fontSize:17, fontWeight:300, lineHeight:1.25 }}>{reportData.currentPersonaLabel}</h3>
-                </div>
-                <div style={{ padding:"18px 20px", background:"var(--teal-bg)", border:"1px solid rgba(29,158,117,0.2)" }}>
-                  <p style={{ fontSize:9, letterSpacing:"0.16em", textTransform:"uppercase", color:"var(--teal)", fontWeight:500, marginBottom:10 }}>You want to project</p>
-                  <h3 style={{ fontFamily:"var(--serif)", fontSize:17, fontWeight:300, lineHeight:1.25 }}>{reportData.aspirationalPersonaLabel}</h3>
-                </div>
+            {/* Current vs Aspired */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:2 }}>
+              <div style={{ padding:"20px 22px", background:"white", border:"1px solid var(--border)", borderTop:"3px solid var(--muted)" }}>
+                <Cap style={{ marginBottom:8, color:"var(--muted)" }}>Currently projecting</Cap>
+                <h3 style={{ fontFamily:"var(--serif)", fontSize:18, fontWeight:300, lineHeight:1.2 }}>{reportData.currentPersonaLabel}</h3>
               </div>
-              <p style={{ fontFamily:"var(--serif)", fontSize:15, lineHeight:1.9, fontWeight:300, fontStyle:"italic", color:"var(--muted)" }}>{reportData.gapSummary}</p>
+              <div style={{ padding:"20px 22px", background:"var(--teal-bg)", border:"1px solid var(--border)", borderTop:"3px solid var(--teal)" }}>
+                <Cap style={{ marginBottom:8 }}>Aiming to project</Cap>
+                <h3 style={{ fontFamily:"var(--serif)", fontSize:18, fontWeight:300, lineHeight:1.2 }}>{reportData.aspirationalPersonaLabel}</h3>
+              </div>
+            </div>
+
+            {/* Gap summary */}
+            <div style={{ padding:"22px 24px", background:"white", border:"1.5px solid var(--bstrong)", borderTop:"3px solid var(--teal)" }}>
+              <Cap style={{ marginBottom:12 }}>The Gap</Cap>
+              <p style={{ fontFamily:"var(--serif)", fontSize:16, lineHeight:1.9, fontWeight:300, fontStyle:"italic" }}>{reportData.gapSummary}</p>
             </div>
 
             {/* Signal radar with target overlay */}
-            {avg && reportData.signalGaps?.length>0 && (() => {
-              const gapMap = reportData.signalGaps.reduce((acc,g) => ({ ...acc, [g.axis]:g.target }), {});
-              // Always nudge aspired value at least 1 point above current so dashed marker is always visible
-              const nudge = (current, target) => {
-                const t = target ?? current;
-                return Math.abs(t - current) < 1 ? Math.min(10, current + 1.5) : t;
-              };
-              const fullTargets = {
-                socialCategory:    nudge(avg.socialCategory,     gapMap.socialCategory),
-                cognitiveState:    nudge(avg.cognitiveState,     gapMap.cognitiveState),
-                status:            nudge(avg.status,             gapMap.status),
-                aestheticCoherence:nudge(avg.aestheticCoherence, gapMap.aestheticCoherence),
-              };
-              return (
-                <div>
-                  <Cap style={{ marginBottom:10, color:"var(--muted)" }}>Where the gap lives</Cap>
-                  <SignalRadar signals={avg} targetSignals={fullTargets} />
+            {avg && reportData.signalGaps?.length>0 && (
+              <div>
+                <Cap style={{ marginBottom:10, color:"var(--muted)" }}>Where the gap lives</Cap>
+                <SignalRadar signals={avg}
+                  targetSignals={reportData.signalGaps.reduce((acc,g) => ({ ...acc, [g.axis]:g.target }), {})} />
+                <div style={{ display:"flex", flexDirection:"column", gap:2, marginTop:2 }}>
+                  {reportData.signalGaps.map((gap,i) => (
+                    <div key={i} style={{ padding:"12px 16px", background:"white", border:"1px solid var(--border)", borderLeft:`3px solid ${axisColor(gap.axis)}`, display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:16 }}>
+                      <div style={{ flex:1 }}>
+                        <p style={{ fontSize:10, color:axisColor(gap.axis), letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:4, fontWeight:500 }}>{axisLabel(gap.axis)}</p>
+                        <p style={{ fontSize:13, color:"var(--muted)", fontWeight:300, lineHeight:1.65 }}>{gap.note}</p>
+                      </div>
+                      <div style={{ textAlign:"right", flexShrink:0 }}>
+                        <p style={{ fontSize:12, color:"var(--muted)", fontWeight:300 }}>{gap.current} → <span style={{ color:axisColor(gap.axis), fontWeight:500 }}>{gap.target}</span></p>
+                        <p style={{ fontSize:10, color:gap.direction==="up"?"var(--green)":"var(--amber)", marginTop:2 }}>{gap.direction==="up"?"↑":"↓"}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              );
-            })()}
+              </div>
+            )}
+
+            {/* Adjustments */}
+            {reportData.adjustments?.length>0 && (
+              <div>
+                <Cap style={{ marginBottom:10, color:"var(--muted)" }}>Three things worth shifting</Cap>
+                <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
+                  {reportData.adjustments.map((adj,i) => (
+                    <div key={i} style={{ padding:"18px 20px", background:"white", border:"1px solid var(--border)", borderLeft:`3px solid ${axisColor(adj.axis)}`, animation:`fadeUp 0.4s ease ${i*0.08}s both` }}>
+                      <p style={{ fontSize:14, fontWeight:400, marginBottom:6, fontFamily:"var(--serif)" }}>{adj.title}</p>
+                      <p style={{ fontSize:13, color:"var(--muted)", lineHeight:1.75, fontWeight:300 }}>{adj.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Closing note */}
+            {reportData.closingNote && (
+              <div style={{ padding:"20px 24px", background:"var(--surface)", border:"1px solid var(--border)", borderLeft:"3px solid var(--bstrong)" }}>
+                <p style={{ fontSize:14, fontFamily:"var(--serif)", lineHeight:1.9, fontWeight:300, fontStyle:"italic" }}>{reportData.closingNote}</p>
+              </div>
+            )}
 
             {/* ── DEEP REPORT ── */}
             <DeepReportSection
@@ -1330,14 +1582,13 @@ export default function App() {
   const [reportData,     setReportData]     = useState(null);
   const [deepReport,     setDeepReport]     = useState(null);   // NEW
   const [probeAnswers,   setProbeAnswers]   = useState(null);   // NEW
+  const [consequences,   setConsequences]   = useState(null);   // NEW: Consequence layer
   const [hydrated,       setHydrated]       = useState(false);
   const [showAspiration, setShowAspiration] = useState(false);
-  const [aspirationStage, setAspirationStage] = useState(1); // 1 or 2
-  const [partialAspirations, setPartialAspirations] = useState(null);
 
   useEffect(() => {
     (async () => {
-      const [s, p, w, a, r, dr, pa] = await Promise.all([
+      const [s, p, w, a, r, dr, pa, c] = await Promise.all([
         sGet("signl:snaps"),
         sGet("signl:persona"),
         sGet("signl:wardrobe"),
@@ -1345,6 +1596,7 @@ export default function App() {
         sGet("signl:reportData"),
         sGet("signl:deepReport"),    // NEW
         sGet("signl:probeAnswers"),  // NEW
+        sGet("signl:consequences"),  // NEW: Consequence layer
       ]);
       if (s)  setSnaps(s);
       if (p)  setPersona(p);
@@ -1353,6 +1605,7 @@ export default function App() {
       if (r)  setReportData(r);
       if (dr) setDeepReport(dr);    // NEW
       if (pa) setProbeAnswers(pa);  // NEW
+      if (c)  setConsequences(c);   // NEW: Consequence layer
       setHydrated(true);
     })();
   }, []);
@@ -1364,19 +1617,11 @@ export default function App() {
   useEffect(() => { if (hydrated) sSet("signl:reportData",   reportData);   }, [reportData,   hydrated]);
   useEffect(() => { if (hydrated) sSet("signl:deepReport",   deepReport);   }, [deepReport,   hydrated]);    // NEW
   useEffect(() => { if (hydrated) sSet("signl:probeAnswers", probeAnswers); }, [probeAnswers,  hydrated]);   // NEW
+  useEffect(() => { if (hydrated) sSet("signl:consequences", consequences); }, [consequences,  hydrated]);   // NEW: Consequence layer
 
   const handleSaveAspirations = data => {
-    if (!data.word) {
-      // Stage 1 complete — store partial, show stage 2
-      setPartialAspirations(data);
-      setAspirationStage(2);
-    } else {
-      // Stage 2 complete — save full aspirations
-      setAspirations(data);
-      setShowAspiration(false);
-      setAspirationStage(1);
-      setPartialAspirations(null);
-    }
+    setAspirations(data);
+    setShowAspiration(false);
   };
 
   if (!hydrated) return (
@@ -1405,17 +1650,17 @@ export default function App() {
           snaps={snaps}
           aspirations={aspirations}
           persona={persona}
-          setPersona={setPersona}
           reportData={reportData}
           setReportData={setReportData}
           deepReport={deepReport}
           setDeepReport={setDeepReport}
           probeAnswers={probeAnswers}
           setProbeAnswers={setProbeAnswers}
+          consequences={consequences}
+          setConsequences={setConsequences}
         />
       )}
-      {showAspiration && aspirationStage === 1 && <AspirationModal1 onSave={handleSaveAspirations} />}
-      {showAspiration && aspirationStage === 2 && <AspirationModal2 existing={partialAspirations} onSave={handleSaveAspirations} />}
+      {showAspiration && <AspirationModal onSave={handleSaveAspirations} />}
     </>
   );
 }

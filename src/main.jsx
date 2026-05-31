@@ -1,9 +1,8 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import SignlApp from './SignlApp'
-
+import App from './signl-app.jsx'
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <SignlApp />
+    <App />
   </React.StrictMode>
 )
