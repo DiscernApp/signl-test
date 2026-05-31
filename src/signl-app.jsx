@@ -744,7 +744,8 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
                 ref={videoRef}
                 autoPlay
                 playsInline
-                style={{ width:"100%", height:"auto", display:"block" }}
+                muted
+                style={{ width:"100%", height:420, objectFit:"cover", display:"block", backgroundColor:"#000" }}
               />
             </div>
             <div style={{ display:"flex", gap:10, justifyContent:"center" }}>
