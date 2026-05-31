@@ -562,10 +562,21 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
     setCameraError(null);
     try {
       setStatus("Requesting camera access…");
+      
+      // Check if API is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Camera API not available. Your browser may not support camera access.");
+      }
+      
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: { 
+          facingMode: "user",
+          width: { ideal: 1280 }, 
+          height: { ideal: 720 } 
+        },
         audio: false,
       });
+      
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -573,11 +584,20 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
       setCameraMode(true);
       setStatus(null);
     } catch (err) {
-      const msg = err.name === "NotAllowedError" 
-        ? "Camera permission denied. Please allow camera access in your browser settings."
-        : err.name === "NotFoundError"
-        ? "No camera found on this device."
-        : `Camera error: ${err.message}`;
+      console.error('Camera error:', err.name, err.message);
+      
+      let msg = `Camera error: ${err.message}`;
+      
+      if (err.name === "NotAllowedError") {
+        msg = "Camera permission denied. Open your browser settings and allow camera access for this site.";
+      } else if (err.name === "NotFoundError") {
+        msg = "No camera found on this device.";
+      } else if (err.name === "NotReadableError") {
+        msg = "Camera is already in use by another app. Please close it and try again.";
+      } else if (err.name === "SecurityError") {
+        msg = "Camera access requires HTTPS (secure connection). Reload the page and try again.";
+      }
+      
       setCameraError(msg);
       setStatus(null);
     }
@@ -853,8 +873,8 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
             {!preview && latest && (
               <div style={{ marginTop:36, animation:"fadeUp 0.5s ease 0.15s both" }}>
                 <Cap style={{ marginBottom:12, color:"var(--muted)" }}>Last reading</Cap>
-                <div style={{ display:"grid", gridTemplateColumns:"80px 1fr", border:"1px solid var(--border)", background:"white", overflow:"hidden" }}>
-                  <img src={latest.preview} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", minHeight:80 }} />
+                <div style={{ display:"flex", flexDirection:"column", border:"1px solid var(--border)", background:"white", overflow:"hidden" }}>
+                  <img src={latest.preview} alt="" style={{ width:"100%", height:"auto", objectFit:"cover", minHeight:160, display:"block" }} />
                   <div style={{ padding:"14px 16px" }}>
                     <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:8 }}>
                       {latest.signalTags?.map((t,i) => <SignalTag key={i} tag={t} small />)}
@@ -868,9 +888,9 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
 
         ) : (
           <div style={{ animation:"fadeUp 0.5s ease both" }}>
-            <div style={{ display:"grid", gridTemplateColumns:"200px 1fr", gap:0, border:"1.5px solid var(--bstrong)", borderTop:"3px solid var(--teal)", background:"white", overflow:"hidden", marginBottom:12 }}>
-              <div style={{ borderRight:"1px solid var(--border)" }}>
-                <img src={result.preview} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", minHeight:240, display:"block" }} />
+            <div style={{ display:"flex", flexDirection:"column", border:"1.5px solid var(--bstrong)", borderTop:"3px solid var(--teal)", background:"white", overflow:"hidden", marginBottom:12 }}>
+              <div style={{ width:"100%", height:"auto" }}>
+                <img src={result.preview} alt="" style={{ width:"100%", height:"auto", objectFit:"cover", minHeight:240, display:"block" }} />
               </div>
               <div style={{ padding:"22px 24px" }}>
                 <Cap style={{ marginBottom:10 }}>Snap {snaps.length} of {SNAPS_REQUIRED}</Cap>
