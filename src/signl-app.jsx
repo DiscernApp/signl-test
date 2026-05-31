@@ -44,7 +44,11 @@ async function callClaude(messages, system, img = null, maxTokens = 1000) {
     ];
   }
   const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method:"POST", headers:{"Content-Type":"application/json"},
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY,
+    },
     body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:maxTokens, system,
       messages:[...messages.slice(0,-1), { role:last.role, content }] })
   });
