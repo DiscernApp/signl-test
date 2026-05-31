@@ -43,17 +43,26 @@ async function callClaude(messages, system, img = null, maxTokens = 1000) {
       { type:"text",  text:content }
     ];
   }
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  
+  // Call serverless proxy endpoint instead of API directly (solves CORS issue)
+  const res = await fetch("/api/claude", {
     method:"POST",
-    headers:{
-      "Content-Type":"application/json",
-      "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY,
-    },
-    body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:maxTokens, system,
-      messages:[...messages.slice(0,-1), { role:last.role, content }] })
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({
+      messages:[...messages.slice(0,-1), { role:last.role, content }],
+      system,
+      image: img,
+      maxTokens
+    })
   });
+  
   const d = await res.json();
-  return d.content?.[0]?.text ?? "";
+  
+  if (!res.ok || !d.success) {
+    throw new Error(d.error || "API request failed");
+  }
+  
+  return d.text ?? "";
 }
 
 function parseJSON(t) {
