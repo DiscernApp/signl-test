@@ -35,22 +35,31 @@ const GlobalStyles = () => (
 );
 
 // ─── API ──────────────────────────────────────────────────────────────────────
-async function callClaude(messages, system, img = null, maxTokens = 1000) {
+async function callClaude(messages, system, img = null, maxTokens = 1000, imgType = "image/jpeg") {
   const last = messages[messages.length - 1];
   let content = last.content;
   if (img && typeof content === "string") {
     content = [
-      { type:"image", source:{ type:"base64", media_type:"image/jpeg", data:img } },
+      { type:"image", source:{ type:"base64", media_type:imgType, data:img } },
       { type:"text",  text:content }
     ];
   }
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetch("/api/claude", {
     method:"POST", headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:maxTokens, system,
+    body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:maxTokens, system,
       messages:[...messages.slice(0,-1), { role:last.role, content }] })
   });
   const d = await res.json();
-  return d.content?.[0]?.text ?? "";
+  if (!res.ok || d.error) {
+    console.error("[firstread] API error:", res.status, d.error || d);
+    throw new Error(d.error?.message || `API returned ${res.status}`);
+  }
+  const text = d.content?.[0]?.text;
+  if (!text) {
+    console.error("[firstread] API returned no text:", d);
+    throw new Error("Empty response from API");
+  }
+  return text;
 }
 
 function parseJSON(t) {
@@ -396,7 +405,7 @@ function Nav({ screen, setScreen, snapCount, personaReady, reportReady }) {
 }
 
 // ─── Aspiration Modal ─────────────────────────────────────────────────────────
-function AspirationModal({ onSave }) {
+function AspirationModal({ onSave, onSkip }) {
   const [archetype, setArchetype] = useState("");
   const [context,   setContext]   = useState("");
   const [word,      setWord]      = useState("");
@@ -449,6 +458,9 @@ function AspirationModal({ onSave }) {
               style={{ width:"100%", background:"white", border:"1.5px solid var(--border)", borderLeft:"3px solid var(--teal)", color:"var(--ink)", fontFamily:"var(--serif)", fontSize:18, fontWeight:300, fontStyle:"italic", padding:"12px 16px", outline:"none" }} />
           </div>
 
+          <button onClick={onSkip} style={{ background:"none", border:"none", color:"var(--muted)", fontFamily:"var(--sans)", fontSize:11, letterSpacing:"0.1em", textTransform:"uppercase", cursor:"pointer", alignSelf:"center", marginBottom:-12 }}>
+            Skip for now
+          </button>
           <button onClick={() => ready && onSave({ archetype, context, word:word.trim() })} disabled={!ready}
             style={{ background:ready?"var(--ink)":"transparent", border:`1.5px solid ${ready?"var(--ink)":"var(--border)"}`, color:ready?"var(--bg)":"var(--muted)", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.16em", textTransform:"uppercase", padding:"14px", cursor:ready?"pointer":"default", transition:"all 0.18s" }}>
             Set My Target →
@@ -465,13 +477,30 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
   const [base64,   setBase64]   = useState(null);
   const [loading,  setLoading]  = useState(false);
   const [result,   setResult]   = useState(null);
+  const [err,      setErr]      = useState("");
+  const [imgType,  setImgType]  = useState("image/jpeg");
   const latest  = snaps[snaps.length - 1];
   const done    = snaps.length >= SNAPS_REQUIRED;
 
   const handleFile = f => {
     if (!f) return;
     const r = new FileReader();
-    r.onload = e => { setPreview(e.target.result); setBase64(e.target.result.split(",")[1]); setResult(null); };
+    r.onload = e => {
+      const url = e.target.result;
+      const m = /^data:([^;]+);base64,/.exec(url);
+      const mime = m ? m[1] : "image/jpeg";
+      // Anthropic accepts jpeg/png/gif/webp only; HEIC etc. will be rejected.
+      const supported = ["image/jpeg","image/png","image/gif","image/webp"];
+      if (!supported.includes(mime)) {
+        setErr(`That image format (${mime}) isn't supported. Please use a JPEG or PNG.`);
+        return;
+      }
+      setErr("");
+      setImgType(mime);
+      setPreview(url);
+      setBase64(url.split(",")[1]);
+      setResult(null);
+    };
     r.readAsDataURL(f);
   };
 
@@ -479,7 +508,7 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
     if (!base64) return;
     setLoading(true);
     try {
-      const reply  = await callClaude([{ role:"user", content:"Analyse the professional signals in this outfit." }], SNAP_ANALYSIS_SYSTEM, base64);
+      const reply  = await callClaude([{ role:"user", content:"Analyse the professional signals in this outfit." }], SNAP_ANALYSIS_SYSTEM, base64, 1000, imgType);
       const parsed = parseJSON(reply);
       if (!parsed) throw new Error("parse fail");
 
@@ -518,7 +547,10 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
       if (newSnaps.length === 1 && !aspirations) {
         setTimeout(() => setShowAspiration(true), 900);
       }
-    } catch(e) { console.error(e); }
+    } catch(e) {
+      console.error("[firstread] snap analysis failed", e);
+      setErr(e.message || "Couldn't read that image. Please try again.");
+    }
     setLoading(false);
   };
 
@@ -597,6 +629,12 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
             </div>
 
             <input id="read-file-input" type="file" accept="image/*" style={{ display:"none" }} onChange={e => { handleFile(e.target.files[0]); e.target.value=""; }} />
+
+            {err && (
+              <div style={{ marginTop:14, padding:"11px 14px", background:"rgba(176,106,32,0.08)", border:"1px solid rgba(176,106,32,0.3)", borderLeft:"3px solid var(--amber)" }}>
+                <p style={{ fontSize:12, color:"var(--amber)", fontWeight:400, lineHeight:1.6 }}>{err}</p>
+              </div>
+            )}
 
             {!preview ? (
               <label htmlFor="read-file-input" style={{ marginTop:14, display:"flex", alignItems:"center", justifyContent:"center", background:"var(--ink)", color:"var(--bg)", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.16em", textTransform:"uppercase", padding:"13px", cursor:"pointer", userSelect:"none" }}>
@@ -1476,7 +1514,7 @@ export default function App() {
           setProbeAnswers={setProbeAnswers}
         />
       )}
-      {showAspiration && <AspirationModal onSave={handleSaveAspirations} />}
+      {showAspiration && <AspirationModal onSave={handleSaveAspirations} onSkip={() => setShowAspiration(false)} />}
       </>
       )}
     </>
