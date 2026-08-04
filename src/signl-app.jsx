@@ -544,7 +544,7 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
             <div style={{ width:64, height:64, borderRadius:"50%", border:"1.5px solid var(--green)", margin:"0 auto 24px", display:"flex", alignItems:"center", justifyContent:"center" }}>
               <span style={{ color:"var(--green)", fontSize:26 }}>✦</span>
             </div>
-            <p style={{ fontFamily:"var(--serif)", fontSize:26, fontWeight:300, marginBottom:12 }}>Five snaps. Your report is ready.</p>
+            <p style={{ fontFamily:"var(--serif)", fontSize:26, fontWeight:300, marginBottom:12 }}>{SNAPS_REQUIRED} snaps. Your report is ready.</p>
             <p style={{ fontSize:13, color:"var(--muted)", lineHeight:1.8, fontWeight:300, maxWidth:380, margin:"0 auto 32px" }}>
               Your signal pattern has been captured. The gap between what you currently project and what you're aiming for is now visible.
             </p>
@@ -1331,10 +1331,15 @@ function ReportScreen({ snaps, aspirations, persona, reportData, setReportData, 
 
 // ─── Induction ────────────────────────────────────────────────────────────────
 function InductionScreen({ onStart }) {
+  const n = SNAPS_REQUIRED;
+  const word = ["zero","one","two","three","four","five","six"][n] || String(n);
   const steps = [
-    { n:"01", t:"Photograph what you wear",  d:"Five outfits, over five ordinary days. Not your best — your usual." },
-    { n:"02", t:"Each one is read",           d:"Not styled or scored. Read the way a room reads you, in the first few seconds." },
-    { n:"03", t:"A pattern emerges",          d:"One outfit is an anecdote. Five is a signal — and the signal is what people actually receive." },
+    { n:"01", t:"Photograph what you wear",
+      d:`${word.charAt(0).toUpperCase()+word.slice(1)} outfits. Upload them now if you already have them, or photograph one a day for the next ${word} days. Not your best — your usual.` },
+    { n:"02", t:"Each one is read",
+      d:"Not styled or scored. Read the way a room reads you, in the first few seconds." },
+    { n:"03", t:"A pattern emerges",
+      d:`One outfit is an anecdote. ${word.charAt(0).toUpperCase()+word.slice(1)} is a signal — and the signal is what people actually receive.` },
   ];
   return (
     <div style={{ minHeight:"100vh", paddingTop:56 }}>
