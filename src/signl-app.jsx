@@ -49,7 +49,18 @@ async function callClaude(messages, system, img = null, maxTokens = 1000, imgTyp
     body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:maxTokens, system,
       messages:[...messages.slice(0,-1), { role:last.role, content }] })
   });
-  const d = await res.json();
+  // The server may return non-JSON (e.g. "Request Entity Too Large"), so read
+  // the raw body first and only then attempt to parse it.
+  const raw = await res.text();
+  let d;
+  try { d = JSON.parse(raw); }
+  catch {
+    console.error("[firstread] non-JSON response", res.status, raw.slice(0, 200));
+    if (res.status === 413 || /entity too large/i.test(raw)) {
+      throw new Error("That image is too large to send. Please try a smaller photo.");
+    }
+    throw new Error(`Server returned ${res.status}. Please try again.`);
+  }
   if (!res.ok || d.error) {
     console.error("[firstread] API error:", res.status, d.error || d);
     throw new Error(d.error?.message || `API returned ${res.status}`);
@@ -482,24 +493,43 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
   const latest  = snaps[snaps.length - 1];
   const done    = snaps.length >= SNAPS_REQUIRED;
 
+  // Phone photos are far too large to POST (serverless body limit ~4.5MB, and
+  // base64 inflates by ~33%). Downscale + re-encode as JPEG in the browser.
+  const MAX_EDGE = 1400;
   const handleFile = f => {
     if (!f) return;
+    setErr("");
     const r = new FileReader();
+    r.onerror = () => setErr("Couldn't read that file. Please try another image.");
     r.onload = e => {
-      const url = e.target.result;
-      const m = /^data:([^;]+);base64,/.exec(url);
-      const mime = m ? m[1] : "image/jpeg";
-      // Anthropic accepts jpeg/png/gif/webp only; HEIC etc. will be rejected.
-      const supported = ["image/jpeg","image/png","image/gif","image/webp"];
-      if (!supported.includes(mime)) {
-        setErr(`That image format (${mime}) isn't supported. Please use a JPEG or PNG.`);
-        return;
-      }
-      setErr("");
-      setImgType(mime);
-      setPreview(url);
-      setBase64(url.split(",")[1]);
-      setResult(null);
+      const img = new Image();
+      img.onerror = () => setErr("That file doesn't look like an image your browser can open. Please use a JPEG or PNG.");
+      img.onload = () => {
+        try {
+          let { width:w, height:h } = img;
+          const scale = Math.min(1, MAX_EDGE / Math.max(w, h));
+          w = Math.round(w * scale); h = Math.round(h * scale);
+          const canvas = document.createElement("canvas");
+          canvas.width = w; canvas.height = h;
+          canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+          let quality = 0.82;
+          let url = canvas.toDataURL("image/jpeg", quality);
+          // Keep shrinking until comfortably under the request limit.
+          while (url.length > 3_200_000 && quality > 0.4) {
+            quality -= 0.12;
+            url = canvas.toDataURL("image/jpeg", quality);
+          }
+          console.log("[firstread] image prepared", { w, h, quality:quality.toFixed(2), kb:Math.round(url.length/1024) });
+          setImgType("image/jpeg");
+          setPreview(url);
+          setBase64(url.split(",")[1]);
+          setResult(null);
+        } catch (err) {
+          console.error("[firstread] image processing failed", err);
+          setErr("Couldn't process that image. Please try another one.");
+        }
+      };
+      img.src = e.target.result;
     };
     r.readAsDataURL(f);
   };
