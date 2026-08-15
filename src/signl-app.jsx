@@ -423,9 +423,9 @@ function AspirationModal({ onSave, onSkip }) {
   const ready = archetype && context && word.trim();
 
   return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(20,20,18,0.65)", zIndex:300, display:"flex", alignItems:"center", justifyContent:"center", padding:20, animation:"fadeIn 0.3s ease" }}>
-      <div style={{ background:"var(--bg)", border:"1.5px solid var(--bstrong)", maxWidth:540, width:"100%", maxHeight:"92vh", overflow:"auto", animation:"slideUp 0.3s ease both" }}>
-        <div style={{ padding:"28px 28px 0" }}>
+    <div style={{ position:"fixed", inset:0, background:"rgba(20,20,18,0.65)", zIndex:300, display:"flex", alignItems:"flex-start", justifyContent:"center", padding:"16px 12px", overflowY:"auto", WebkitOverflowScrolling:"touch", animation:"fadeIn 0.3s ease" }}>
+      <div style={{ background:"var(--bg)", border:"1.5px solid var(--bstrong)", maxWidth:540, width:"100%", margin:"auto", animation:"slideUp 0.3s ease both" }}>
+        <div style={{ padding:"22px 20px 0" }}>
           <Cap style={{ marginBottom:10 }}>Before your next snap</Cap>
           <h2 style={{ fontFamily:"var(--serif)", fontSize:"clamp(24px,4vw,32px)", fontWeight:300, lineHeight:1.1, marginBottom:10 }}>
             What are you aiming to project?
@@ -435,7 +435,7 @@ function AspirationModal({ onSave, onSkip }) {
           </p>
         </div>
 
-        <div style={{ padding:"0 28px 28px", display:"flex", flexDirection:"column", gap:26 }}>
+        <div style={{ padding:"0 20px 22px", display:"flex", flexDirection:"column", gap:22 }}>
           <div>
             <p style={{ fontFamily:"var(--serif)", fontSize:15, fontWeight:400, marginBottom:4 }}>What professional stance are you building toward?</p>
             <p style={{ fontSize:11, color:"var(--muted)", fontWeight:300, marginBottom:12 }}>The position you want to be recognised as occupying.</p>
@@ -489,6 +489,7 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
   const [loading,  setLoading]  = useState(false);
   const [result,   setResult]   = useState(null);
   const [err,      setErr]      = useState("");
+  const [aspirationPending, setAspirationPending] = useState(false);
   const [imgType,  setImgType]  = useState("image/jpeg");
   const latest  = snaps[snaps.length - 1];
   const done    = snaps.length >= SNAPS_REQUIRED;
@@ -574,8 +575,9 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
         });
       }
 
+      // Don't interrupt the reading. Queue the modal for when they move on.
       if (newSnaps.length === 1 && !aspirations) {
-        setTimeout(() => setShowAspiration(true), 900);
+        setAspirationPending(true);
       }
     } catch(e) {
       console.error("[firstread] snap analysis failed", e);
@@ -658,7 +660,8 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
               )}
             </div>
 
-            <input id="read-file-input" type="file" accept="image/*" style={{ display:"none" }} onChange={e => { handleFile(e.target.files[0]); e.target.value=""; }} />
+            <input id="read-file-camera" type="file" accept="image/*" capture="environment" style={{ display:"none" }} onChange={e => { handleFile(e.target.files[0]); e.target.value=""; }} />
+            <input id="read-file-input"  type="file" accept="image/*" style={{ display:"none" }} onChange={e => { handleFile(e.target.files[0]); e.target.value=""; }} />
 
             {err && (
               <div style={{ marginTop:14, padding:"11px 14px", background:"rgba(176,106,32,0.08)", border:"1px solid rgba(176,106,32,0.3)", borderLeft:"3px solid var(--amber)" }}>
@@ -667,9 +670,14 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
             )}
 
             {!preview ? (
-              <label htmlFor="read-file-input" style={{ marginTop:14, display:"flex", alignItems:"center", justifyContent:"center", background:"var(--ink)", color:"var(--bg)", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.16em", textTransform:"uppercase", padding:"13px", cursor:"pointer", userSelect:"none" }}>
-                Upload or Take Photo
-              </label>
+              <div style={{ display:"flex", gap:8, marginTop:14 }}>
+                <label htmlFor="read-file-camera" style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", background:"var(--ink)", color:"var(--bg)", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.16em", textTransform:"uppercase", padding:"13px", cursor:"pointer", userSelect:"none" }}>
+                  Take Photo
+                </label>
+                <label htmlFor="read-file-input" style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", background:"transparent", border:"1.5px solid var(--ink)", color:"var(--ink)", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.16em", textTransform:"uppercase", padding:"11.5px", cursor:"pointer", userSelect:"none" }}>
+                  Upload
+                </label>
+              </div>
             ) : (
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:14 }}>
                 <button onClick={reset} style={{ background:"none", border:"none", color:"var(--muted)", fontSize:11, letterSpacing:"0.1em", textTransform:"uppercase", cursor:"pointer", fontFamily:"var(--sans)" }}>✕ Remove</button>
@@ -725,7 +733,7 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
             )}
 
             <div style={{ display:"flex", gap:10 }}>
-              <button onClick={reset} style={{ flex:1, background:"var(--ink)", color:"var(--bg)", border:"none", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.14em", textTransform:"uppercase", padding:"13px", cursor:"pointer" }}>
+              <button onClick={() => { reset(); if (aspirationPending) { setAspirationPending(false); setShowAspiration(true); } }} style={{ flex:1, background:"var(--ink)", color:"var(--bg)", border:"none", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.14em", textTransform:"uppercase", padding:"13px", cursor:"pointer" }}>
                 {done ? "All Done" : "Next Snap"}
               </button>
               {done ? (
