@@ -73,6 +73,18 @@ async function callClaude(messages, system, img = null, maxTokens = 1000, imgTyp
   return text;
 }
 
+function useIsNarrow(breakpoint = 640) {
+  const [narrow, setNarrow] = useState(
+    typeof window !== "undefined" ? window.innerWidth < breakpoint : false
+  );
+  useEffect(() => {
+    const onResize = () => setNarrow(window.innerWidth < breakpoint);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [breakpoint]);
+  return narrow;
+}
+
 function parseJSON(t) {
   try { return JSON.parse(t.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim()); }
   catch { return null; }
@@ -484,6 +496,7 @@ function AspirationModal({ onSave, onSkip }) {
 
 // ─── HOME / AUDIT ─────────────────────────────────────────────────────────────
 function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspiration, setScreen }) {
+  const narrow = useIsNarrow();
   const [preview,  setPreview]  = useState(null);
   const [base64,   setBase64]   = useState(null);
   const [loading,  setLoading]  = useState(false);
@@ -706,11 +719,13 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
 
         ) : (
           <div style={{ animation:"fadeUp 0.5s ease both" }}>
-            <div style={{ display:"grid", gridTemplateColumns:"200px 1fr", gap:0, border:"1.5px solid var(--bstrong)", borderTop:"3px solid var(--teal)", background:"white", overflow:"hidden", marginBottom:12 }}>
-              <div style={{ borderRight:"1px solid var(--border)" }}>
-                <img src={result.preview} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", minHeight:240, display:"block" }} />
+            <div style={{ display:"grid", gridTemplateColumns:narrow?"1fr":"200px 1fr", gap:0, border:"1.5px solid var(--bstrong)", borderTop:"3px solid var(--teal)", background:"white", overflow:"hidden", marginBottom:12 }}>
+              <div style={{ borderRight:narrow?"none":"1px solid var(--border)", borderBottom:narrow?"1px solid var(--border)":"none", background:narrow?"var(--surface)":"transparent", display:narrow?"flex":"block", justifyContent:"center", padding:narrow?"14px 0":0 }}>
+                <img src={result.preview} alt="" style={narrow
+                  ? { width:110, height:146, objectFit:"cover", display:"block", border:"1px solid var(--border)" }
+                  : { width:"100%", height:"100%", objectFit:"cover", minHeight:240, display:"block" }} />
               </div>
-              <div style={{ padding:"22px 24px" }}>
+              <div style={{ padding:narrow?"18px 18px 20px":"22px 24px" }}>
                 <Cap style={{ marginBottom:10 }}>Snap {snaps.length} of {SNAPS_REQUIRED}</Cap>
                 <p style={{ fontFamily:"var(--serif)", fontSize:15, lineHeight:1.85, fontWeight:300, fontStyle:"italic", marginBottom:14 }}>{result.read}</p>
                 <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
@@ -1250,6 +1265,82 @@ function DeepReportSection({ snaps, aspirations, deepReport, setDeepReport, prob
 function ReportScreen({ snaps, aspirations, persona, reportData, setReportData, deepReport, setDeepReport, probeAnswers, setProbeAnswers }) {
   const [generating, setGenerating] = useState(false);
   const [showCard,   setShowCard]   = useState(false);
+  const [cardSaving, setCardSaving] = useState(false);
+  const [cardSaved,  setCardSaved]  = useState(false);
+  const [cardErr,    setCardErr]    = useState("");
+  const cardRef = useRef(null);
+
+  // Render the card DOM to a PNG via SVG foreignObject -> canvas. PNG rather
+  // than JPEG: the card is flat colour and type, which JPEG artefacts badly.
+  async function downloadCard() {
+    setCardErr(""); setCardSaving(true);
+    try {
+      const node = cardRef.current;
+      if (!node) throw new Error("Card not ready");
+
+      const rect  = node.getBoundingClientRect();
+      const scale = 2;                       // retina-quality export
+      const w = Math.ceil(rect.width);
+      const h = Math.ceil(rect.height);
+
+      // Inline computed styles so the clone renders standalone.
+      const clone = node.cloneNode(true);
+      const srcEls = [node, ...node.querySelectorAll("*")];
+      const dstEls = [clone, ...clone.querySelectorAll("*")];
+      srcEls.forEach((src, i) => {
+        const cs = window.getComputedStyle(src);
+        dstEls[i].setAttribute("style", Array.from(cs).map(k => `${k}:${cs.getPropertyValue(k)}`).join(";"));
+      });
+
+      const xml = new XMLSerializer().serializeToString(clone);
+      const svg =
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">` +
+        `<foreignObject width="100%" height="100%">` +
+        `<div xmlns="http://www.w3.org/1999/xhtml">${xml}</div>` +
+        `</foreignObject></svg>`;
+
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = () => reject(new Error("Couldn't render the card"));
+        img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+      });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = w * scale; canvas.height = h * scale;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#F8F7F5";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0);
+
+      const blob = await new Promise(res => canvas.toBlob(res, "image/png"));
+      if (!blob) throw new Error("Couldn't create the image");
+      const file = new File([blob], "first-read-signal-card.png", { type:"image/png" });
+
+      // On mobile, the native share sheet is far more useful than a download.
+      if (navigator.canShare && navigator.canShare({ files:[file] })) {
+        await navigator.share({ files:[file], title:"My First Read signal card" });
+        setCardSaved(true);
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = "first-read-signal-card.png";
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 30000);
+        setCardSaved(true);
+      }
+    } catch (e) {
+      if (e && e.name === "AbortError") { /* user dismissed the share sheet */ }
+      else {
+        console.error("[firstread] card export failed", e);
+        setCardErr("Couldn't save the card. You can screenshot it instead.");
+      }
+    }
+    setCardSaving(false);
+  }
+
   const avg   = avgSignalsFrom(snaps);
   const ready = snaps.length >= SNAPS_REQUIRED;
 
@@ -1374,16 +1465,28 @@ function ReportScreen({ snaps, aspirations, persona, reportData, setReportData, 
 
             {/* Share card */}
             <div>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
-                <Cap style={{ color:"var(--muted)" }}>Your signal card</Cap>
-                <button onClick={() => setShowCard(!showCard)} style={{ background:"none", border:"none", color:"var(--teal)", fontFamily:"var(--sans)", fontSize:11, letterSpacing:"0.1em", textTransform:"uppercase", cursor:"pointer" }}>
-                  {showCard?"Hide":"Show"} card
+              <Cap style={{ color:"var(--muted)", marginBottom:12, display:"block" }}>Your signal card</Cap>
+              {!showCard ? (
+                <button onClick={() => setShowCard(true)}
+                  style={{ width:"100%", background:"var(--ink)", color:"var(--bg)", border:"none", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.16em", textTransform:"uppercase", padding:"15px", cursor:"pointer" }}>
+                  Show my signal card →
                 </button>
-              </div>
-              {showCard && (
+              ) : (
                 <div style={{ animation:"pop 0.4s ease both" }}>
-                  <ShareCard persona={persona} avgSignals={avg} />
-                  <p style={{ fontSize:11, color:"var(--muted)", marginTop:12, fontWeight:300, fontStyle:"italic" }}>Screenshot to share with your network.</p>
+                  <div ref={cardRef} style={{ display:"inline-block", width:"100%" }}>
+                    <ShareCard persona={persona} avgSignals={avg} />
+                  </div>
+                  <div style={{ display:"flex", gap:8, marginTop:12 }}>
+                    <button onClick={downloadCard} disabled={cardSaving}
+                      style={{ flex:1, background:"var(--teal)", color:"#FAF7F2", border:"none", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.14em", textTransform:"uppercase", padding:"14px", cursor:cardSaving?"default":"pointer", opacity:cardSaving?0.6:1 }}>
+                      {cardSaving ? "Preparing…" : cardSaved ? "Saved ✓" : "Download card"}
+                    </button>
+                    <button onClick={() => setShowCard(false)}
+                      style={{ background:"none", border:"1px solid var(--bstrong)", color:"var(--ink)", fontFamily:"var(--sans)", fontSize:11, letterSpacing:"0.14em", textTransform:"uppercase", padding:"14px 18px", cursor:"pointer" }}>
+                      Hide
+                    </button>
+                  </div>
+                  {cardErr && <p style={{ fontSize:11, color:"var(--amber)", marginTop:10, fontWeight:300 }}>{cardErr}</p>}
                 </div>
               )}
             </div>
