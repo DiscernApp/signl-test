@@ -17,6 +17,13 @@ const GlobalStyles = () => (
       --green:   #2A7A58;
       --amber:   #B06A20;
       --mauve:   #6B5B7B;
+      /* Dark-surface axis palette: lifted for contrast on --ink, and separated
+         by hue family (green / blue / amber / magenta) so the four axes remain
+         distinguishable with red-green colour blindness. */
+      --axis1-d: #3FBF92;
+      --axis2-d: #5AA9E6;
+      --axis3-d: #E0A03C;
+      --axis4-d: #C77DBB;
       --serif:   'Cormorant Garamond', Georgia, serif;
       --sans:    'Jost', system-ui, sans-serif;
     }
@@ -892,17 +899,20 @@ function SignalsScreen({ snaps, persona, setPersona }) {
 }
 
 // ─── SHARE CARD ───────────────────────────────────────────────────────────────
+// Change in one place when a real domain is registered.
+const SHARE_URL = "firstread.vercel.app";
+
 function ShareCard({ persona, avgSignals, headlineFallback }) {
   const headline = persona?.headline || headlineFallback;
   if (!headline) return null;
   const bars = [
-    { left:"Ambiguous Tribe",  right:"Legible Archetype", value:avgSignals?.socialCategory||5,     color:"var(--teal)" },
-    { left:"Context Misread",  right:"Context Aligned",   value:avgSignals?.cognitiveState||5,     color:"var(--green)" },
-    { left:"Status Neutral",   right:"Status Projected",  value:avgSignals?.status||5,             color:"var(--amber)" },
-    { left:"Incoherent",       right:"Considered",        value:avgSignals?.aestheticCoherence||5, color:"var(--mauve)" },
+    { left:"Ambiguous Tribe",  right:"Legible Archetype", value:avgSignals?.socialCategory||5,     color:"var(--axis1-d)" },
+    { left:"Context Misread",  right:"Context Aligned",   value:avgSignals?.cognitiveState||5,     color:"var(--axis2-d)" },
+    { left:"Status Neutral",   right:"Status Projected",  value:avgSignals?.status||5,             color:"var(--axis3-d)" },
+    { left:"Incoherent",       right:"Considered",        value:avgSignals?.aestheticCoherence||5, color:"var(--axis4-d)" },
   ];
   return (
-    <div style={{ background:"var(--ink)", padding:"32px 28px", maxWidth:360, border:"1.5px solid var(--ink)" }}>
+    <div style={{ background:"var(--ink)", padding:"30px 28px", maxWidth:360, width:"100%", aspectRatio:"4 / 5", border:"1.5px solid var(--ink)", display:"flex", flexDirection:"column", boxSizing:"border-box" }}>
       <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:26 }}>
         <div style={{ width:16, height:16, borderRadius:"50%", border:"1px solid var(--teal)", display:"flex", alignItems:"center", justifyContent:"center" }}>
           <div style={{ width:5, height:5, borderRadius:"50%", background:"var(--teal)" }} />
@@ -920,8 +930,8 @@ function ShareCard({ persona, avgSignals, headlineFallback }) {
             return (
               <div key={i} style={{ marginBottom:13 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:5 }}>
-                  <span style={{ fontSize:9, color:"rgba(248,247,245,0.35)", letterSpacing:"0.08em", textTransform:"uppercase" }}>{bar.left}</span>
-                  <span style={{ fontSize:9, color:"rgba(248,247,245,0.35)", letterSpacing:"0.08em", textTransform:"uppercase" }}>{bar.right}</span>
+                  <span style={{ fontSize:9, color:"rgba(248,247,245,0.62)", letterSpacing:"0.08em", textTransform:"uppercase" }}>{bar.left}</span>
+                  <span style={{ fontSize:9, color:"rgba(248,247,245,0.62)", letterSpacing:"0.08em", textTransform:"uppercase" }}>{bar.right}</span>
                 </div>
                 <div style={{ position:"relative", height:1, background:"rgba(248,247,245,0.12)", borderRadius:1 }}>
                   <div style={{ position:"absolute", left:`${pct}%`, transform:"translateX(-50%)", top:-4, width:9, height:9, borderRadius:"50%", background:bar.color, border:"1.5px solid var(--ink)" }} />
@@ -934,12 +944,17 @@ function ShareCard({ persona, avgSignals, headlineFallback }) {
       {persona?.dominantSignals?.length>0 && (
         <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginBottom:22 }}>
           {persona.dominantSignals.slice(0,3).map((s,i) => (
-            <span key={i} style={{ fontSize:9, color:"var(--teal)", border:"1px solid rgba(29,158,117,0.4)", padding:"3px 9px", letterSpacing:"0.1em", fontWeight:500 }}>{s}</span>
+            <span key={i} style={{ fontSize:9, color:"var(--axis1-d)", border:"1px solid rgba(63,191,146,0.45)", padding:"3px 9px", letterSpacing:"0.1em", fontWeight:500 }}>{s}</span>
           ))}
         </div>
       )}
-      <div style={{ height:1, background:"rgba(248,247,245,0.1)", marginBottom:16 }} />
-      <p style={{ fontSize:9, color:"rgba(248,247,245,0.25)", letterSpacing:"0.14em", textTransform:"uppercase", fontFamily:"var(--sans)" }}>First Read — by Dfine</p>
+      <div style={{ marginTop:"auto" }}>
+        <div style={{ height:1, background:"rgba(248,247,245,0.1)", marginBottom:14 }} />
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:12 }}>
+          <p style={{ fontSize:9, color:"rgba(248,247,245,0.45)", letterSpacing:"0.14em", textTransform:"uppercase", fontFamily:"var(--sans)" }}>First Read — by Dfine</p>
+          <p style={{ fontSize:9, color:"rgba(248,247,245,0.45)", letterSpacing:"0.12em", textTransform:"uppercase", fontFamily:"var(--sans)", whiteSpace:"nowrap" }}>{SHARE_URL}</p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1149,7 +1164,7 @@ function DeepReportDisplay({ report, probeAnswers, aspirations, onRegenerate }) 
           {aspirations?.archetype ? ` You said you're aiming toward ${aspirations.archetype}. The Mirror defines what that actually means for you specifically.` : ""}
         </p>
         <p style={{ fontSize:12, color:"rgba(248,247,245,0.3)", lineHeight:1.75, fontWeight:300, marginBottom:26 }}>
-          Your $10 is credited toward your first month. So trying Dfine costs you nothing more.
+          Your $19 is credited toward your first month. So trying Dfine costs you nothing more.
         </p>
         <a href="https://dfine-test.vercel.app" target="_blank" rel="noopener noreferrer"
           style={{ display:"inline-block", background:"var(--teal)", color:"white", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.16em", textTransform:"uppercase", padding:"14px 34px", cursor:"pointer", textDecoration:"none" }}>
@@ -1166,7 +1181,7 @@ function DeepReportDisplay({ report, probeAnswers, aspirations, onRegenerate }) 
 }
 
 // ─── DEEP REPORT SECTION ──────────────────────────────────────────────────────
-// Sits below the basic report. Locked until $10 payment. After unlock:
+// Sits below the basic report. Locked until $19 payment. After unlock:
 // probe questions → generation → deep report display.
 function DeepReportSection({ snaps, aspirations, deepReport, setDeepReport, probeAnswers, setProbeAnswers }) {
   const [showProbe,   setShowProbe]   = useState(false);
@@ -1212,7 +1227,7 @@ function DeepReportSection({ snaps, aspirations, deepReport, setDeepReport, prob
         You'll answer five questions before your report is revealed — not after. The thinking you do is what makes the report specific to you. The paywall comes at the end because that's when it means the most.
       </p>
       <p style={{ fontSize:11, color:"rgba(248,247,245,0.28)", lineHeight:1.75, fontWeight:300, marginBottom:28 }}>
-        $10 one-off · Credited to your first month if you go on to try persona
+        $19 one-off · Credited to your first month if you go on to try Dfine
       </p>
       {/* ── Payment integration point ──
           Replace the onClick below with your payment flow.
@@ -1221,7 +1236,7 @@ function DeepReportSection({ snaps, aspirations, deepReport, setDeepReport, prob
       <button
         onClick={() => { setUnlocked(true); setShowProbe(true); }}
         style={{ background:"var(--teal)", color:"white", border:"none", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.16em", textTransform:"uppercase", padding:"14px 34px", cursor:"pointer" }}>
-        Unlock Deep Report — $10
+        Unlock Deep Report — $19
       </button>
     </div>
   );
@@ -1270,6 +1285,183 @@ function ReportScreen({ snaps, aspirations, persona, reportData, setReportData, 
   const [cardSaved,  setCardSaved]  = useState(false);
   const [cardErr,    setCardErr]    = useState("");
   const cardRef = useRef(null);
+
+  // ── Full report PDF (Deep Report purchasers only) ──
+  // Opens a styled print sheet in a new tab; the browser's own "Save as PDF"
+  // keeps the text as real vector type rather than a rasterised screenshot.
+  const [pdfState, setPdfState] = useState(null);
+
+  function esc(v) {
+    return String(v ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  function reportSheetHTML() {
+    const today = new Date().toLocaleDateString("en-AU", { day:"numeric", month:"long", year:"numeric" });
+    const block = (label, value) => value ? `
+      <section class="field">
+        <p class="label">${esc(label)}</p>
+        <p class="value">${esc(value)}</p>
+      </section>` : "";
+
+    // Targets come from the free report's signalGaps, so the PDF shows the same
+    // current-vs-target distance the on-screen radar does. The gap is the point.
+    const targets = (reportData?.signalGaps || []).reduce((acc,g) => ({ ...acc, [g.axis]: g.target }), {});
+    const axes = avg ? [
+      ["Ambiguous Tribe → Legible Archetype", avg.socialCategory,     targets.socialCategory],
+      ["Context Misread → Context Aligned",   avg.cognitiveState,     targets.cognitiveState],
+      ["Status Neutral → Status Projected",   avg.status,             targets.status],
+      ["Incoherent → Considered",             avg.aestheticCoherence, targets.aestheticCoherence],
+    ] : [];
+
+    const pos = v => ((v - 1) / 9) * 100;
+    const axisRows = axes.map(([l,v,t]) => {
+      const hasGap = typeof t === "number" && Math.abs(t - v) > 0.05;
+      const span = hasGap
+        ? `<span class="axis-span" style="left:${Math.min(pos(v),pos(t))}%;width:${Math.abs(pos(t)-pos(v))}%"></span>`
+        : "";
+      const target = hasGap ? `<span class="axis-target" style="left:${pos(t)}%"></span>` : "";
+      return `
+      <div class="axis">
+        <span class="axis-l">${esc(l)}</span>
+        <span class="axis-track">${span}${target}<span class="axis-dot" style="left:${pos(v)}%"></span></span>
+        <span class="axis-v">${Number(v).toFixed(1)}${hasGap ? `<em>→${Number(t).toFixed(1)}</em>` : ""}</span>
+      </div>`;
+    }).join("");
+
+    // The reads these scores came from. Small — evidence, not illustration.
+    const thumbs = (snaps || []).filter(s => s.preview).map((s,i) => `
+      <figure class="thumb">
+        <img src="${s.preview}" alt="" />
+        <figcaption>Read ${i+1}</figcaption>
+      </figure>`).join("");
+
+    const gapNotes = (reportData?.signalGaps || []).filter(g => g.note).map(g => `
+      <li>${esc(g.note)}</li>`).join("");
+
+    const adjustments = (reportData?.adjustments || []).map(a => `
+      <div class="adj">
+        <p class="adj-t">${esc(a.title)}</p>
+        <p class="adj-d">${esc(a.description)}</p>
+      </div>`).join("");
+
+    const deep = deepReport ? `
+      <div class="page-break"></div>
+      <div class="divider"><span>The Deep Report</span></div>
+      ${block("Perception gap",        deepReport.perceptionGap)}
+      ${block("Signal contradiction",  deepReport.signalContradiction)}
+      ${block("The filter",            deepReport.theFilter)}
+      ${block("Vagueness diagnosis",   deepReport.vaguenessDiagnosis)}
+      ${block("What this means",       deepReport.whatThisMeans)}
+      ${deepReport.closingProvocation ? `<div class="pull"><p>${esc(deepReport.closingProvocation)}</p></div>` : ""}
+    ` : "";
+
+    return `<!doctype html>
+<html lang="en-AU"><head><meta charset="utf-8">
+<title>First Read — Perception Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#F8F7F5;--surface:#F1F0ED;--ink:#141412;--teal:#1D9E75;--muted:#767470;
+        --rule:rgba(20,20,18,0.13);--serif:'Cormorant Garamond',Georgia,serif;--sans:'Jost',system-ui,sans-serif;}
+  @page{size:A4;margin:18mm 16mm;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:300;
+       -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .sheet{max-width:150mm;margin:0 auto;padding:2mm 0 0;}
+  .mast{display:flex;align-items:center;gap:8px;margin-bottom:10mm;}
+  .ring{width:12px;height:12px;border-radius:50%;border:1.4px solid var(--teal);
+        display:flex;align-items:center;justify-content:center;}
+  .ring i{width:4px;height:4px;border-radius:50%;background:var(--teal);display:block;}
+  .wm{font-family:var(--serif);font-size:16px;font-weight:400;}
+  .kicker{margin-left:auto;font-size:8px;letter-spacing:0.22em;text-transform:uppercase;color:var(--muted);}
+  .eyebrow{font-size:8.5px;font-weight:500;letter-spacing:0.22em;text-transform:uppercase;color:var(--teal);margin-bottom:10px;}
+  h1{font-family:var(--serif);font-style:italic;font-weight:300;font-size:26px;line-height:1.18;margin-bottom:10px;}
+  .rule{width:48px;height:1px;background:var(--teal);margin-bottom:6mm;}
+  .field{margin-bottom:4.2mm;break-inside:avoid;}
+  .label{font-size:8.5px;font-weight:500;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+  .value{font-family:var(--serif);font-weight:300;font-size:13.5px;line-height:1.6;padding-top:7px;border-top:1px solid var(--rule);}
+  .thumbs{display:flex;gap:5mm;margin-bottom:7mm;}
+  .thumb{width:24mm;}
+  .thumb img{width:100%;height:31mm;object-fit:cover;display:block;border:1px solid var(--rule);}
+  .thumb figcaption{font-size:7.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);margin-top:4px;}
+  .axes-cap{font-size:8.5px;font-weight:500;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+  .key{display:flex;align-items:center;gap:5px;letter-spacing:0.1em;}
+  .key i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-left:7px;}
+  .k-now{background:var(--teal);}
+  .k-tgt{border:1.2px solid var(--muted);}
+  .axis-span{position:absolute;top:0;height:1px;background:var(--teal);opacity:0.35;}
+  .axis-target{position:absolute;top:-3px;width:7px;height:7px;border-radius:50%;border:1.2px solid var(--muted);background:var(--bg);transform:translateX(-50%);}
+  .axis-v em{font-style:normal;font-size:10px;color:var(--muted);margin-left:1px;}
+  .two-col{display:flex;gap:8mm;}
+  .two-col .field{flex:1;}
+  .notes{list-style:none;padding-top:7px;border-top:1px solid var(--rule);}
+  .notes li{font-family:var(--serif);font-size:13px;line-height:1.6;margin-bottom:5px;padding-left:11px;position:relative;}
+  .notes li:before{content:"—";position:absolute;left:0;color:var(--teal);}
+  .adjs{padding-top:7px;border-top:1px solid var(--rule);}
+  .adj{margin-bottom:6px;break-inside:avoid;}
+  .adj-t{font-family:var(--serif);font-size:13.5px;font-weight:500;line-height:1.35;}
+  .adj-d{font-family:var(--serif);font-size:12.5px;font-weight:300;line-height:1.55;color:var(--muted);}
+  .axes{margin-bottom:5.5mm;padding-top:7px;border-top:1px solid var(--rule);}
+  .axis{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+  .axis-l{font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);width:58mm;flex:0 0 auto;}
+  .axis-track{position:relative;flex:1;height:1px;background:var(--rule);}
+  .axis-dot{position:absolute;top:-3px;width:7px;height:7px;border-radius:50%;background:var(--teal);transform:translateX(-50%);}
+  .axis-v{font-family:var(--serif);font-size:13px;width:10mm;text-align:right;}
+  .page-break{break-before:page;page-break-before:always;height:0;}
+  .divider{display:flex;align-items:center;gap:10px;margin:0 0 9mm;}
+  .divider span{font-size:8.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--teal);white-space:nowrap;}
+  .divider:after{content:"";flex:1;height:1px;background:var(--rule);}
+  .deep-h{font-family:var(--serif);font-style:italic;font-weight:300;font-size:24px;line-height:1.25;margin-bottom:10mm;}
+  .pull{background:var(--surface);border-left:2px solid var(--teal);padding:12px 16px;margin-top:5mm;break-inside:avoid;}
+  .pull p{font-family:var(--serif);font-style:italic;font-weight:300;font-size:13.5px;line-height:1.65;}
+  .colophon{margin-top:7mm;padding-top:7px;border-top:1px solid var(--rule);display:flex;
+            justify-content:space-between;font-size:8.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);}
+  .hint{position:fixed;left:0;right:0;bottom:0;padding:11px 16px;text-align:center;
+        background:var(--ink);color:#F8F7F5;font-size:12px;}
+  .hint b{font-weight:500;}
+  @media print{.hint{display:none;}}
+</style></head><body>
+<div class="sheet">
+  <header class="mast"><span class="ring"><i></i></span><span class="wm">First Read</span>
+    <span class="kicker">Perception Report</span></header>
+  <p class="eyebrow">How you are being read</p>
+  <h1>${esc(deepReport?.blindSpotHeadline || reportData?.currentPersonaLabel || persona?.headline || "Your Perception Report")}</h1>
+  <div class="rule"></div>
+  ${thumbs ? `<div class="thumbs">${thumbs}</div>` : ""}
+  ${axisRows ? `<p class="axes-cap">Averaged across ${snaps.length} reads<span class="key"><i class="k-now"></i>now<i class="k-tgt"></i>aiming for</span></p><div class="axes">${axisRows}</div>` : ""}
+  <div class="two-col">
+    ${block("Read as", reportData?.currentPersonaLabel)}
+    ${block("Aiming for", reportData?.aspirationalPersonaLabel)}
+  </div>
+  ${block("The gap", reportData?.gapSummary)}
+  ${gapNotes ? `<section class="field"><p class="label">What the distance means</p><ul class="notes">${gapNotes}</ul></section>` : ""}
+  ${adjustments ? `<section class="field"><p class="label">What would shift it</p><div class="adjs">${adjustments}</div></section>` : ""}
+  ${reportData?.closingNote ? `<div class="pull"><p>${esc(reportData.closingNote)}</p></div>` : ""}
+  ${deep}
+  <div class="colophon"><span>Read ${esc(today)}</span><span>${esc(SHARE_URL)}</span></div>
+</div>
+<div class="hint">Choose <b>Save as PDF</b> as the destination to keep a copy.</div>
+<script>
+  window.addEventListener("load",function(){
+    if(document.fonts&&document.fonts.ready){document.fonts.ready.then(function(){setTimeout(function(){window.print();},350);});}
+    else{setTimeout(function(){window.print();},900);}
+  });
+<\/script>
+</body></html>`;
+  }
+
+  function downloadReport() {
+    try {
+      const w = window.open("", "_blank");
+      if (!w) throw new Error("Popup blocked");
+      w.document.open(); w.document.write(reportSheetHTML()); w.document.close();
+      setPdfState("opened");
+    } catch (e) {
+      console.error("[firstread] report sheet failed", e);
+      setPdfState("error");
+    }
+  }
 
   // Render the card DOM to a PNG via SVG foreignObject -> canvas. PNG rather
   // than JPEG: the card is flat colour and type, which JPEG artefacts badly.
@@ -1452,6 +1644,25 @@ function ReportScreen({ snaps, aspirations, persona, reportData, setReportData, 
             {reportData.closingNote && (
               <div style={{ padding:"20px 24px", background:"var(--surface)", border:"1px solid var(--border)", borderLeft:"3px solid var(--bstrong)" }}>
                 <p style={{ fontSize:14, fontFamily:"var(--serif)", lineHeight:1.9, fontWeight:300, fontStyle:"italic" }}>{reportData.closingNote}</p>
+              </div>
+            )}
+
+            {/* Keep a copy — Deep Report purchasers only */}
+            {deepReport && (
+              <div style={{ padding:"22px 24px", background:"var(--surface)", border:"1px solid var(--border)", borderLeft:"3px solid var(--teal)" }}>
+                <Cap style={{ color:"var(--muted)", marginBottom:8, display:"block" }}>Keep a copy</Cap>
+                <p style={{ fontSize:13, color:"var(--muted)", lineHeight:1.8, fontWeight:300, marginBottom:16 }}>
+                  Your full read and Deep Report, as a document you can keep, print, and bring to the Mirror.
+                </p>
+                <button onClick={downloadReport}
+                  style={{ background:"var(--ink)", color:"var(--bg)", border:"none", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.14em", textTransform:"uppercase", padding:"13px 28px", cursor:"pointer" }}>
+                  {pdfState==="opened" ? "Opened ✓" : "Download full report"}
+                </button>
+                {pdfState==="error" && (
+                  <p style={{ fontSize:11, color:"var(--amber)", marginTop:10, fontWeight:300 }}>
+                    Couldn't open the document — allow pop-ups and try again.
+                  </p>
+                )}
               </div>
             )}
 
