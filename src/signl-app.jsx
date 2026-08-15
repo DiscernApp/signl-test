@@ -829,7 +829,7 @@ function SignalsScreen({ snaps, persona, setPersona }) {
                 <Cap style={{ marginBottom:12 }}>Emerging Persona</Cap>
                 <h3 style={{ fontFamily:"var(--serif)", fontSize:22, fontWeight:300, marginBottom:14 }}>{persona.headline}</h3>
                 <p style={{ fontSize:13, lineHeight:1.85, fontWeight:300, color:"var(--muted)", fontStyle:"italic", marginBottom:16 }}>{persona.summary}</p>
-                {persona.dominantSignals?.length>0 && (
+                {persona?.dominantSignals?.length>0 && (
                   <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:16 }}>
                     {persona.dominantSignals.map((s,i) => <SignalTag key={i} tag={s} />)}
                   </div>
@@ -892,8 +892,9 @@ function SignalsScreen({ snaps, persona, setPersona }) {
 }
 
 // ─── SHARE CARD ───────────────────────────────────────────────────────────────
-function ShareCard({ persona, avgSignals }) {
-  if (!persona) return null;
+function ShareCard({ persona, avgSignals, headlineFallback }) {
+  const headline = persona?.headline || headlineFallback;
+  if (!headline) return null;
   const bars = [
     { left:"Ambiguous Tribe",  right:"Legible Archetype", value:avgSignals?.socialCategory||5,     color:"var(--teal)" },
     { left:"Context Misread",  right:"Context Aligned",   value:avgSignals?.cognitiveState||5,     color:"var(--green)" },
@@ -910,7 +911,7 @@ function ShareCard({ persona, avgSignals }) {
       </div>
       <p style={{ fontSize:9, letterSpacing:"0.2em", textTransform:"uppercase", color:"var(--teal)", fontFamily:"var(--sans)", fontWeight:500, marginBottom:10 }}>My Signal Profile</p>
       <h2 style={{ fontFamily:"var(--serif)", fontSize:"clamp(20px,4vw,28px)", fontWeight:300, lineHeight:1.1, color:"var(--bg)", marginBottom:22 }}>
-        {persona.headline}
+        {headline}
       </h2>
       {avgSignals && (
         <div style={{ marginBottom:20 }}>
@@ -930,7 +931,7 @@ function ShareCard({ persona, avgSignals }) {
           })}
         </div>
       )}
-      {persona.dominantSignals?.length>0 && (
+      {persona?.dominantSignals?.length>0 && (
         <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginBottom:22 }}>
           {persona.dominantSignals.slice(0,3).map((s,i) => (
             <span key={i} style={{ fontSize:9, color:"var(--teal)", border:"1px solid rgba(29,158,117,0.4)", padding:"3px 9px", letterSpacing:"0.1em", fontWeight:500 }}>{s}</span>
@@ -1133,12 +1134,12 @@ function DeepReportDisplay({ report, probeAnswers, aspirations, onRegenerate }) 
         </p>
       </div>
 
-      {/* Persona bridge — personalised using their data */}
+      {/* Dfine bridge — personalised using their data */}
       <div style={{ padding:"36px 28px", background:"var(--ink)" }}>
         <Cap style={{ marginBottom:14, color:"var(--teal-lt)" }}>The next step</Cap>
         <h3 style={{ fontFamily:"var(--serif)", fontSize:"clamp(20px,3.2vw,28px)", fontWeight:300, color:"var(--bg)", marginBottom:16, lineHeight:1.18 }}>
           Most people have a vague sense of the professional they want to be.<br />
-          <span style={{ color:"var(--teal-lt)", fontStyle:"italic" }}>persona defines it, articulates it, and dresses you to show up that way.</span>
+          <span style={{ color:"var(--teal-lt)", fontStyle:"italic" }}>Dfine defines it, articulates it, and dresses you to show up that way.</span>
         </h3>
         <p style={{ fontSize:13, color:"rgba(248,247,245,0.5)", lineHeight:1.9, fontWeight:300, marginBottom:6 }}>
           First Read showed you what the room sees. The Mirror decides what you want them to see. They're different sessions — and you need both.
@@ -1148,9 +1149,9 @@ function DeepReportDisplay({ report, probeAnswers, aspirations, onRegenerate }) 
           {aspirations?.archetype ? ` You said you're aiming toward ${aspirations.archetype}. The Mirror defines what that actually means for you specifically.` : ""}
         </p>
         <p style={{ fontSize:12, color:"rgba(248,247,245,0.3)", lineHeight:1.75, fontWeight:300, marginBottom:26 }}>
-          Your $10 is credited toward your first month. So trying persona costs you nothing more.
+          Your $10 is credited toward your first month. So trying Dfine costs you nothing more.
         </p>
-        <a href="https://persona.app" target="_blank" rel="noopener noreferrer"
+        <a href="https://dfine-test.vercel.app" target="_blank" rel="noopener noreferrer"
           style={{ display:"inline-block", background:"var(--teal)", color:"white", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.16em", textTransform:"uppercase", padding:"14px 34px", cursor:"pointer", textDecoration:"none" }}>
           Discover Dfine →
         </a>
@@ -1279,6 +1280,7 @@ function ReportScreen({ snaps, aspirations, persona, reportData, setReportData, 
       if (!node) throw new Error("Card not ready");
 
       const rect  = node.getBoundingClientRect();
+      if (!rect.width || !rect.height) throw new Error("Card hasn't rendered yet");
       const scale = 2;                       // retina-quality export
       const w = Math.ceil(rect.width);
       const h = Math.ceil(rect.height);
@@ -1453,16 +1455,6 @@ function ReportScreen({ snaps, aspirations, persona, reportData, setReportData, 
               </div>
             )}
 
-            {/* ── DEEP REPORT ── */}
-            <DeepReportSection
-              snaps={snaps}
-              aspirations={aspirations}
-              deepReport={deepReport}
-              setDeepReport={setDeepReport}
-              probeAnswers={probeAnswers}
-              setProbeAnswers={setProbeAnswers}
-            />
-
             {/* Share card */}
             <div>
               <Cap style={{ color:"var(--muted)", marginBottom:12, display:"block" }}>Your signal card</Cap>
@@ -1474,7 +1466,7 @@ function ReportScreen({ snaps, aspirations, persona, reportData, setReportData, 
               ) : (
                 <div style={{ animation:"pop 0.4s ease both" }}>
                   <div ref={cardRef} style={{ display:"inline-block", width:"100%" }}>
-                    <ShareCard persona={persona} avgSignals={avg} />
+                    <ShareCard persona={persona} avgSignals={avg} headlineFallback={reportData?.currentPersonaLabel} />
                   </div>
                   <div style={{ display:"flex", gap:8, marginTop:12 }}>
                     <button onClick={downloadCard} disabled={cardSaving}
@@ -1490,6 +1482,16 @@ function ReportScreen({ snaps, aspirations, persona, reportData, setReportData, 
                 </div>
               )}
             </div>
+
+            {/* ── DEEP REPORT ── */}
+            <DeepReportSection
+              snaps={snaps}
+              aspirations={aspirations}
+              deepReport={deepReport}
+              setDeepReport={setDeepReport}
+              probeAnswers={probeAnswers}
+              setProbeAnswers={setProbeAnswers}
+            />
 
             <button onClick={generate} style={{ background:"none", border:"none", color:"var(--muted)", fontFamily:"var(--sans)", fontSize:10, letterSpacing:"0.12em", textTransform:"uppercase", cursor:"pointer", alignSelf:"flex-start" }}>
               Regenerate report
