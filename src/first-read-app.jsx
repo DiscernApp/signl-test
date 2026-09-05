@@ -628,13 +628,13 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
             <div style={{ width:64, height:64, borderRadius:"50%", border:"1.5px solid var(--green)", margin:"0 auto 24px", display:"flex", alignItems:"center", justifyContent:"center" }}>
               <span style={{ color:"var(--green)", fontSize:26 }}>✦</span>
             </div>
-            <p style={{ fontFamily:"var(--serif)", fontSize:26, fontWeight:300, marginBottom:12 }}>{SNAPS_REQUIRED} snaps. Your report is ready.</p>
+            <p style={{ fontFamily:"var(--serif)", fontSize:26, fontWeight:300, marginBottom:12 }}>{SNAPS_REQUIRED} snaps. Your signals are in.</p>
             <p style={{ fontSize:13, color:"var(--muted)", lineHeight:1.8, fontWeight:300, maxWidth:380, margin:"0 auto 32px" }}>
-              Your signal pattern has been captured. The gap between what you currently project and what you're aiming for is now visible.
+              Your signal pattern has been captured. See what it says across all {SNAPS_REQUIRED} reads — then the report will read it against what you said you were aiming for.
             </p>
-            <button onClick={() => setScreen(SCREENS.REPORT)}
+            <button onClick={() => setScreen(SCREENS.SIGNALS)}
               style={{ background:"var(--ink)", color:"var(--bg)", border:"none", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.16em", textTransform:"uppercase", padding:"14px 36px", cursor:"pointer" }}>
-              View My Report →
+              Read my signals →
             </button>
             <div style={{ marginTop:20 }}>
               <button onClick={reset} style={{ background:"none", border:"none", color:"var(--muted)", fontFamily:"var(--sans)", fontSize:11, letterSpacing:"0.1em", textTransform:"uppercase", cursor:"pointer" }}>
