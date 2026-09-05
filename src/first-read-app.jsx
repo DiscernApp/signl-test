@@ -754,21 +754,29 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
               </div>
             )}
 
-            <div style={{ display:"flex", gap:10 }}>
-              <button onClick={() => { reset(); if (aspirationPending) { setAspirationPending(false); setShowAspiration(true); } }} style={{ flex:1, background:"var(--ink)", color:"var(--bg)", border:"none", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.14em", textTransform:"uppercase", padding:"13px", cursor:"pointer" }}>
-                {done ? "All Done" : "Next Snap"}
-              </button>
-              {done ? (
-                <button onClick={() => setScreen(SCREENS.REPORT)} style={{ flex:1, background:"none", border:"1px solid var(--bstrong)", color:"var(--ink)", fontFamily:"var(--sans)", fontSize:11, letterSpacing:"0.14em", textTransform:"uppercase", padding:"13px", cursor:"pointer" }}>
-                  View Report →
+            {done ? (
+              <>
+                {/* Signals must come before the report: the pattern across reads
+                    is what the report interprets, and it builds the persona the
+                    share card depends on. */}
+                <button onClick={() => setScreen(SCREENS.SIGNALS)}
+                  style={{ width:"100%", background:"var(--ink)", color:"var(--bg)", border:"none", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.14em", textTransform:"uppercase", padding:"15px", cursor:"pointer" }}>
+                  Read my signals →
                 </button>
-              ) : (
+                <p style={{ fontSize:12, color:"var(--muted)", textAlign:"center", marginTop:10, fontWeight:300, lineHeight:1.7 }}>
+                  Three reads done. See the pattern across them before the report interprets it.
+                </p>
+              </>
+            ) : (
+              <div style={{ display:"flex", gap:10 }}>
+                <button onClick={() => { reset(); if (aspirationPending) { setAspirationPending(false); setShowAspiration(true); } }} style={{ flex:1, background:"var(--ink)", color:"var(--bg)", border:"none", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.14em", textTransform:"uppercase", padding:"13px", cursor:"pointer" }}>
+                  Next Snap
+                </button>
                 <button onClick={() => setScreen(SCREENS.SIGNALS)} style={{ flex:1, background:"none", border:"1px solid var(--bstrong)", color:"var(--ink)", fontFamily:"var(--sans)", fontSize:11, letterSpacing:"0.14em", textTransform:"uppercase", padding:"13px", cursor:"pointer" }}>
                   View Signals →
                 </button>
-              )}
-            </div>
-            {done && <p style={{ fontSize:11, color:"var(--green)", textAlign:"center", marginTop:10, fontWeight:400 }}>✦ Your report is ready</p>}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -777,7 +785,7 @@ function HomeScreen({ snaps, setSnaps, setWardrobe, aspirations, setShowAspirati
 }
 
 // ─── SIGNALS SCREEN ───────────────────────────────────────────────────────────
-function SignalsScreen({ snaps, persona, setPersona }) {
+function SignalsScreen({ snaps, persona, setPersona, setScreen }) {
   const [synthesising, setSynthesising] = useState(false);
   const avg   = avgSignalsFrom(snaps);
   const ready = snaps.length >= MIN_FOR_PERSONA;
@@ -891,6 +899,18 @@ function SignalsScreen({ snaps, persona, setPersona }) {
                 ))}
               </div>
             </div>
+
+            {persona && snaps.length >= SNAPS_REQUIRED && (
+              <div style={{ marginTop:28, paddingTop:22, borderTop:"1px solid var(--border)" }}>
+                <button onClick={() => setScreen(SCREENS.REPORT)}
+                  style={{ width:"100%", background:"var(--ink)", color:"var(--bg)", border:"none", fontFamily:"var(--sans)", fontSize:11, fontWeight:500, letterSpacing:"0.14em", textTransform:"uppercase", padding:"15px", cursor:"pointer" }}>
+                  Read the report →
+                </button>
+                <p style={{ fontSize:12, color:"var(--muted)", textAlign:"center", marginTop:10, fontWeight:300, lineHeight:1.7 }}>
+                  This is what your signals say. The report reads it against what you said you were aiming for.
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1854,7 +1874,7 @@ export default function App() {
       <>
       <Nav screen={screen} setScreen={setScreen} snapCount={snapCount} personaReady={!!persona} reportReady={reportReady} />
       {screen === SCREENS.HOME    && <HomeScreen snaps={snaps} setSnaps={setSnaps} setWardrobe={setWardrobe} aspirations={aspirations} setShowAspiration={setShowAspiration} setScreen={setScreen} />}
-      {screen === SCREENS.SIGNALS && <SignalsScreen snaps={snaps} persona={persona} setPersona={setPersona} />}
+      {screen === SCREENS.SIGNALS && <SignalsScreen snaps={snaps} persona={persona} setPersona={setPersona} setScreen={setScreen} />}
       {screen === SCREENS.REPORT  && (
         <ReportScreen
           snaps={snaps}
